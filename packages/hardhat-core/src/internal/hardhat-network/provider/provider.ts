@@ -72,6 +72,7 @@ export class HardhatNetworkProvider extends EventEmitter
     private readonly _blockGasLimit: number,
     private readonly _throwOnTransactionFailures: boolean,
     private readonly _throwOnCallFailures: boolean,
+    private readonly _automine: boolean,
     private readonly _genesisAccounts: GenesisAccount[] = [],
     private readonly _artifacts?: Artifacts,
     private _loggingEnabled = false,
@@ -237,6 +238,7 @@ export class HardhatNetworkProvider extends EventEmitter
     let config: NodeConfig;
 
     const commonConfig = {
+      autoMine: true,
       blockGasLimit: this._blockGasLimit,
       genesisAccounts: this._genesisAccounts,
       allowUnlimitedContractSize: this._allowUnlimitedContractSize,
