@@ -238,7 +238,7 @@ export class HardhatNetworkProvider extends EventEmitter
     let config: NodeConfig;
 
     const commonConfig = {
-      autoMine: true,
+      automine: true,
       blockGasLimit: this._blockGasLimit,
       genesisAccounts: this._genesisAccounts,
       allowUnlimitedContractSize: this._allowUnlimitedContractSize,
