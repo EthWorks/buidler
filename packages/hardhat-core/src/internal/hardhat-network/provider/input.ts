@@ -339,7 +339,7 @@ export function validateParams(
 
 export function validateParams(
   params: any[],
-  loggingEnabled: typeof t.boolean
+  boolean: typeof t.boolean
 ): [boolean];
 
 // tslint:disable only-hardhat-error
