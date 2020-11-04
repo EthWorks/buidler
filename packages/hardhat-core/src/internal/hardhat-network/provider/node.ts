@@ -462,7 +462,7 @@ export class HardhatNode extends EventEmitter {
     return [...this._localAccounts.keys()];
   }
 
-  public async getBlockGasLimit(): Promise<BN> {
+  public getBlockGasLimit(): BN {
     return this._txPool.getBlockGasLimit();
   }
 
@@ -477,7 +477,7 @@ export class HardhatNode extends EventEmitter {
   }> {
     const tx = await this._getFakeTransaction({
       ...txParams,
-      gasLimit: await this.getBlockGasLimit(),
+      gasLimit: this.getBlockGasLimit(),
     });
 
     const result = await this._runInBlockContext(blockNumber, () =>
@@ -501,7 +501,7 @@ export class HardhatNode extends EventEmitter {
     // manage errors
     if (result.execResult.exceptionError !== undefined) {
       return {
-        estimation: await this.getBlockGasLimit(),
+        estimation: this.getBlockGasLimit(),
         trace: vmTrace,
         error: await this._manageErrors(
           result.execResult,
@@ -870,7 +870,7 @@ export class HardhatNode extends EventEmitter {
     const results: RunTxResult[] = [];
     const receipts: TxReceipt[] = [];
 
-    const blockGasLimit = await this.getBlockGasLimit();
+    const blockGasLimit = this.getBlockGasLimit();
     const minTxFee = this._getMinimalTransactionFee();
     const gasLeft = blockGasLimit.clone();
     const pendingTxs = this._txPool.getPendingTransactions();
@@ -1184,7 +1184,7 @@ export class HardhatNode extends EventEmitter {
     const block = new Block(
       {
         header: {
-          gasLimit: await this.getBlockGasLimit(),
+          gasLimit: this.getBlockGasLimit(),
           nonce: "0x42",
           timestamp,
         },
@@ -1385,7 +1385,7 @@ export class HardhatNode extends EventEmitter {
     return this._binarySearchEstimation(
       txParams,
       initialEstimation,
-      await this.getBlockGasLimit()
+      this.getBlockGasLimit()
     );
   }
 
