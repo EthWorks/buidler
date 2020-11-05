@@ -998,6 +998,14 @@ export class HardhatNode extends EventEmitter {
 
     await this._saveBlockAsSuccessfullyRun(block, result);
 
+    if (offsetShouldChange) {
+      await this.increaseTime(newOffset.sub(await this.getTimeIncrement()));
+    }
+
+    await this._resetNextBlockTimestamp();
+
+    // TODO extract the below lines to a separate function handling traces and errors
+
     let vmTrace = this._vmTracer.getLastTopLevelMessageTrace();
     const vmTracerError = this._vmTracer.getLastError();
     this._vmTracer.clearLastError();
@@ -1016,12 +1024,6 @@ export class HardhatNode extends EventEmitter {
       vmTrace,
       vmTracerError
     );
-
-    if (offsetShouldChange) {
-      await this.increaseTime(newOffset.sub(await this.getTimeIncrement()));
-    }
-
-    await this._resetNextBlockTimestamp();
 
     return {
       trace: vmTrace,
