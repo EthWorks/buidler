@@ -992,9 +992,7 @@ export class EthModule {
           : await this._getDefaultCallFrom(),
       data: rpcCall.data !== undefined ? rpcCall.data : toBuffer([]),
       gasLimit:
-        rpcCall.gas !== undefined
-          ? rpcCall.gas
-          : this._node.getBlockGasLimit(),
+        rpcCall.gas !== undefined ? rpcCall.gas : this._node.getBlockGasLimit(),
       gasPrice:
         rpcCall.gasPrice !== undefined
           ? rpcCall.gasPrice
@@ -1010,9 +1008,7 @@ export class EthModule {
       to: rpcTx.to !== undefined ? rpcTx.to : Buffer.from([]),
       from: rpcTx.from,
       gasLimit:
-        rpcTx.gas !== undefined
-          ? rpcTx.gas
-          : this._node.getBlockGasLimit(),
+        rpcTx.gas !== undefined ? rpcTx.gas : this._node.getBlockGasLimit(),
       gasPrice:
         rpcTx.gasPrice !== undefined
           ? rpcTx.gasPrice
