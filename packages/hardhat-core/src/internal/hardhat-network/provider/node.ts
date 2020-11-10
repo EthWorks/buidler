@@ -582,7 +582,9 @@ export class HardhatNode extends EventEmitter {
   }
 
   public async getPendingTransactions(): Promise<Transaction[]> {
-    return txMapToArray(this._txPool.getPendingTransactions());
+    const txPoolPending = txMapToArray(this._txPool.getPendingTransactions());
+    const txPoolQueued = txMapToArray(this._txPool.getQueuedTransactions());
+    return txPoolPending.concat(txPoolQueued);
   }
 
   public async signPersonalMessage(
