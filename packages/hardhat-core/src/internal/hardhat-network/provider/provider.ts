@@ -25,6 +25,7 @@ import {
   MethodNotFoundError,
   MethodNotSupportedError,
 } from "./errors";
+import { MiningTimer } from "./MiningTimer";
 import { EthModule } from "./modules/eth";
 import { EvmModule } from "./modules/evm";
 import { HardhatModule } from "./modules/hardhat";
@@ -241,7 +242,6 @@ export class HardhatNetworkProvider extends EventEmitter
 
     const commonConfig = {
       automine: this._automine,
-      intervalMining: this._intervalMining,
       blockGasLimit: this._blockGasLimit,
       genesisAccounts: this._genesisAccounts,
       allowUnlimitedContractSize: this._allowUnlimitedContractSize,
@@ -283,7 +283,7 @@ export class HardhatNetworkProvider extends EventEmitter
 
     this._netModule = new NetModule(common);
     this._web3Module = new Web3Module();
-    this._evmModule = new EvmModule(node);
+    this._evmModule = new EvmModule(node, this._makeMiningTimer());
     this._hardhatModule = new HardhatModule(
       node,
       this._reset.bind(this),
@@ -326,6 +326,18 @@ export class HardhatNetworkProvider extends EventEmitter
         );
       }
     }
+  }
+
+  private _makeMiningTimer(): MiningTimer {
+    const miningTimer = new MiningTimer(this._intervalMining.blockTime, () =>
+      this.request({ method: "evm_mine" })
+    );
+
+    if (this._intervalMining.enabled) {
+      miningTimer.start();
+    }
+
+    return miningTimer;
   }
 
   private async _reset(forkConfig?: ForkConfig) {
