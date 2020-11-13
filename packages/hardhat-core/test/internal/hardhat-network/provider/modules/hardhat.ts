@@ -1,12 +1,15 @@
 import { assert } from "chai";
 import { bufferToHex } from "ethereumjs-util";
+import sinon from "sinon";
 
+import { numberToRpcQuantity } from "../../../../../internal/hardhat-network/provider/output";
 import { ALCHEMY_URL } from "../../../../setup";
 import { assertInvalidArgumentsError } from "../../helpers/assertions";
 import { EMPTY_ACCOUNT_ADDRESS } from "../../helpers/constants";
 import { quantityToNumber } from "../../helpers/conversions";
 import { setCWD } from "../../helpers/cwd";
-import { PROVIDERS } from "../../helpers/providers";
+import { DEFAULT_ACCOUNTS_ADDRESSES, PROVIDERS } from "../../helpers/providers";
+import { waitForAssert } from "../../helpers/waitForAssert";
 
 describe("Hardhat module", function () {
   PROVIDERS.forEach(({ name, useProvider, isFork }) => {
@@ -117,6 +120,63 @@ describe("Hardhat module", function () {
             },
           ]);
           assert.isTrue(result);
+        });
+
+        it("resets interval mining", async function () {
+          const sinonClock = sinon.useFakeTimers({
+            now: Date.now(),
+            toFake: ["Date", "setTimeout", "clearTimeout"],
+          });
+          const interval = 15_000;
+
+          await this.provider.send("evm_setAutomineEnabled", [false]);
+          await this.provider.send("evm_setIntervalMining", [
+            {
+              enabled: true,
+              blockTime: interval,
+            },
+          ]);
+
+          const initialBlockNumberBefore = await getLatestBlockNumber();
+
+          await sinonClock.tickAsync(interval);
+
+          await waitForAssert(10, async () => {
+            const currentBlockNumber = await getLatestBlockNumber();
+            assert.equal(currentBlockNumber, initialBlockNumberBefore + 1);
+          });
+
+          await this.provider.send("eth_sendTransaction", [
+            {
+              from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+              to: "0x1111111111111111111111111111111111111111",
+              nonce: numberToRpcQuantity(0),
+            },
+          ]);
+
+          const pendingTxsBefore = await this.provider.send(
+            "eth_pendingTransactions"
+          );
+          assert.lengthOf(pendingTxsBefore, 1);
+
+          const result = await this.provider.send("hardhat_reset");
+          assert.isTrue(result);
+
+          const pendingTxsAfter = await this.provider.send(
+            "eth_pendingTransactions"
+          );
+          assert.lengthOf(pendingTxsAfter, 0);
+
+          const initialBlockNumberAfter = await getLatestBlockNumber();
+
+          await sinonClock.tickAsync(30 * interval);
+
+          await waitForAssert(10, async () => {
+            const currentBlockNumber = await getLatestBlockNumber();
+            assert.equal(currentBlockNumber, initialBlockNumberAfter);
+          });
+
+          sinonClock.restore();
         });
 
         if (isFork) {
