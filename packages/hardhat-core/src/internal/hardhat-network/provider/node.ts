@@ -513,12 +513,12 @@ export class HardhatNode extends EventEmitter {
     );
   }
 
-  public setNextBlockTimestamp(timestamp: BN) {
-    this._nextBlockTimestamp = new BN(timestamp);
+  public getNextBlockTimestamp(): BN {
+    return this._nextBlockTimestamp;
   }
 
-  public async increaseTime(increment: BN) {
-    this._blockTimeOffsetSeconds = this._blockTimeOffsetSeconds.add(increment);
+  public setNextBlockTimestamp(timestamp: BN) {
+    this._nextBlockTimestamp = new BN(timestamp);
   }
 
   public getTimeIncrement(): BN {
@@ -529,8 +529,8 @@ export class HardhatNode extends EventEmitter {
     this._blockTimeOffsetSeconds = timeIncrement;
   }
 
-  public getNextBlockTimestamp(): BN {
-    return this._nextBlockTimestamp;
+  public increaseTime(increment: BN) {
+    this._blockTimeOffsetSeconds = this._blockTimeOffsetSeconds.add(increment);
   }
 
   public async getPendingTransaction(
@@ -886,7 +886,7 @@ export class HardhatNode extends EventEmitter {
     await this._saveBlockAsSuccessfullyRun(block, result);
 
     if (needsTimestampIncrease) {
-      await this.increaseTime(new BN(1));
+      this.increaseTime(new BN(1));
     }
 
     if (offsetShouldChange) {
