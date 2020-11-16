@@ -318,7 +318,7 @@ export class HardhatNode extends EventEmitter {
     });
 
     const result = await this._runInBlockContext(blockNumber, () =>
-      this._runTxAndRevertMutations(tx, blockNumber === null)
+      this._runTxAndRevertMutations(tx, false)
     );
 
     let vmTrace = this._vmTracer.getLastTopLevelMessageTrace();
