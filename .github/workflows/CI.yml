@@ -7,7 +7,6 @@ on:
       - development
       - 2.0
       - tx-pool
-      - mine-block
   pull_request:
     branches:
       - "*"
