@@ -241,7 +241,7 @@ describe("Eth module", function () {
           assert.equal(timestampResult, timestamp);
         });
 
-        it("Should be run in the context of the last block with without block tag param", async function () {
+        it("Should be run in the context of the last block without block tag param", async function () {
           const firstBlock = await getFirstBlock();
           const timestamp = getCurrentTimestamp() + 60;
           await this.provider.send("evm_setNextBlockTimestamp", [timestamp]);
