@@ -534,7 +534,7 @@ export class HardhatNode extends EventEmitter {
     });
   }
 
-  public async getStackTraceFailuresCount(): Promise<number> {
+  public getStackTraceFailuresCount(): number {
     return this._failedStackTraces;
   }
 
