@@ -51,6 +51,7 @@ import { ForkStateManager } from "./fork/ForkStateManager";
 import { HardhatBlockchain } from "./HardhatBlockchain";
 import {
   CallParams,
+  EstimateGasResult,
   FilterParams,
   GatherTracesResult,
   GenesisAccount,
@@ -303,7 +304,7 @@ export class HardhatNode extends EventEmitter {
   ): Promise<RunCallResult> {
     const tx = await this._getFakeTransaction({
       ...call,
-      nonce: await this.getAccountNonce(call.from, null), // TODO-Ethworks shouldn't the second argument be blockNumber?
+      nonce: await this.getAccountNonce(call.from, null),
     });
 
     const result = await this._runInBlockContext(blockNumber, () =>
@@ -370,12 +371,7 @@ export class HardhatNode extends EventEmitter {
   public async estimateGas(
     txParams: TransactionParams,
     blockNumber: BN | null
-  ): Promise<{
-    estimation: BN;
-    trace: MessageTrace | undefined;
-    error?: Error;
-    consoleLogMessages: string[];
-  }> {
+  ): Promise<EstimateGasResult> {
     const tx = await this._getFakeTransaction({
       ...txParams,
       gasLimit: this.getBlockGasLimit(),

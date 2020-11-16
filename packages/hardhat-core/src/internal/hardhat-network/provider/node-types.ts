@@ -95,6 +95,10 @@ export interface RunCallResult extends GatherTracesResult {
   result: Buffer;
 }
 
+export interface EstimateGasResult extends GatherTracesResult {
+  estimation: BN;
+}
+
 export interface GatherTracesResult {
   trace: MessageTrace | undefined;
   error?: Error;
