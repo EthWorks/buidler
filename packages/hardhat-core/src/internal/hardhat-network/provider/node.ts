@@ -1085,13 +1085,14 @@ export class HardhatNode extends EventEmitter {
     let blockTimestamp: BN;
     let offsetShouldChange: boolean;
     let newOffset: BN = new BN(0);
+    const currentTimestamp = new BN(getCurrentTimestamp());
 
     // if timestamp is not provided, we check nextBlockTimestamp, if it is
     // set, we use it as the timestamp instead. If it is not set, we use
     // time offset + real time as the timestamp.
     if (timestamp === undefined || timestamp.eqn(0)) {
       if (this.getNextBlockTimestamp().eqn(0)) {
-        blockTimestamp = this.getTimeIncrement().addn(getCurrentTimestamp());
+        blockTimestamp = currentTimestamp.add(this.getTimeIncrement());
         offsetShouldChange = false;
       } else {
         blockTimestamp = this.getNextBlockTimestamp();
@@ -1103,7 +1104,7 @@ export class HardhatNode extends EventEmitter {
     }
 
     if (offsetShouldChange) {
-      newOffset = blockTimestamp.subn(getCurrentTimestamp());
+      newOffset = blockTimestamp.sub(currentTimestamp);
     }
 
     return [blockTimestamp, offsetShouldChange, newOffset];
