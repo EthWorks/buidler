@@ -22,6 +22,7 @@ import {
   assertInvalidInputError,
   assertNodeBalances,
   assertNotSupported,
+  assertPendingNodeBalances,
   assertQuantity,
   assertReceiptMatchesGethOne,
   assertTransaction,
@@ -578,6 +579,44 @@ describe("Eth module", function () {
           ]);
 
           await assertNodeBalances(this.provider, [
+            DEFAULT_ACCOUNTS_BALANCES[0].subn(1 + 21000 + 2 + 21000 * 2),
+            DEFAULT_ACCOUNTS_BALANCES[1].addn(1 + 2),
+          ]);
+        });
+
+        it("Should return the pending balance", async function () {
+          await this.provider.send("evm_setAutomineEnabled", [false]);
+
+          await assertNodeBalances(this.provider, DEFAULT_ACCOUNTS_BALANCES);
+
+          await this.provider.send("eth_sendTransaction", [
+            {
+              from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+              to: DEFAULT_ACCOUNTS_ADDRESSES[1],
+              value: numberToRpcQuantity(1),
+              gas: numberToRpcQuantity(21000),
+              gasPrice: numberToRpcQuantity(1),
+              nonce: numberToRpcQuantity(0),
+            },
+          ]);
+
+          await assertPendingNodeBalances(this.provider, [
+            DEFAULT_ACCOUNTS_BALANCES[0].subn(1 + 21000),
+            DEFAULT_ACCOUNTS_BALANCES[1].addn(1),
+          ]);
+
+          await this.provider.send("eth_sendTransaction", [
+            {
+              from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+              to: DEFAULT_ACCOUNTS_ADDRESSES[1],
+              value: numberToRpcQuantity(2),
+              gas: numberToRpcQuantity(21000),
+              gasPrice: numberToRpcQuantity(2),
+              nonce: numberToRpcQuantity(1),
+            },
+          ]);
+
+          await assertPendingNodeBalances(this.provider, [
             DEFAULT_ACCOUNTS_BALANCES[0].subn(1 + 21000 + 2 + 21000 * 2),
             DEFAULT_ACCOUNTS_BALANCES[1].addn(1 + 2),
           ]);
