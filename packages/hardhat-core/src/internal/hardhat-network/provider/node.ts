@@ -1246,10 +1246,6 @@ export class HardhatNode extends EventEmitter {
     return latestBlockTimestamp.eq(blockTimestamp);
   }
 
-  private async _increaseBlockTimestamp(block: Block) {
-    block.header.timestamp = new BN(block.header.timestamp).addn(1).toBuffer();
-  }
-
   private async _runInBlockContext<T>(
     blockNumber: BN | null,
     action: () => Promise<T>
@@ -1419,15 +1415,14 @@ export class HardhatNode extends EventEmitter {
       // if the context is to estimate gas or run calls in pending block
       if (runOnNewBlock) {
         const [blockTimestamp] = this._calculateTimestampAndOffset();
-
-        blockContext = await this._getNextBlockTemplate(blockTimestamp);
         const needsTimestampIncrease = await this._timestampClashesWithPreviousBlockOne(
           blockTimestamp
         );
-
         if (needsTimestampIncrease) {
-          await this._increaseBlockTimestamp(blockContext);
+          blockTimestamp.iaddn(1);
         }
+
+        blockContext = await this._getNextBlockTemplate(blockTimestamp);
 
         // in the context of running estimateGas call, we have to do binary
         // search for the gas and run the call multiple times. Since it is
