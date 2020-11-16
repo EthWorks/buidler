@@ -19,7 +19,6 @@ import {
   ecsign,
   hashPersonalMessage,
   privateToAddress,
-  stripZeros,
   toBuffer,
 } from "ethereumjs-util";
 import EventEmitter from "events";
@@ -53,8 +52,10 @@ import { HardhatBlockchain } from "./HardhatBlockchain";
 import {
   CallParams,
   FilterParams,
+  GatherTracesResult,
   GenesisAccount,
   NodeConfig,
+  RunCallResult,
   RunTransactionResult,
   Snapshot,
   TracingConfig,
@@ -280,24 +281,17 @@ export class HardhatNode extends EventEmitter {
     }
   }
 
-  public async mineBlock(
-    shouldReturnTraces: true,
-    timestamp?: BN
-  ): Promise<RunTransactionResult>;
-  public async mineBlock(
-    shouldReturnTraces?: false,
-    timestamp?: BN
-  ): Promise<void>;
-  public async mineBlock(
-    shouldReturnTraces = false,
-    timestamp?: BN
-  ): Promise<RunTransactionResult | void> {
-    const [block, result] = await this._mineBlockUnsafe(timestamp);
-    if (shouldReturnTraces) {
-      const traces = await this._gatherTraces(result);
+  public async mineBlock(returnResult: true, timestamp?: BN): Promise<RunTransactionResult>; // tslint:disable-line:prettier
+  public async mineBlock(returnResult?: false, timestamp?: BN): Promise<void>;
+  public async mineBlock(returnResult = false, timestamp?: BN): Promise<RunTransactionResult | void> { // tslint:disable-line:prettier
+    const [block, blockResult] = await this._mineBlockUnsafe(timestamp);
+    if (returnResult) {
+      const traces = await this._gatherTraces(
+        blockResult.results[0].execResult // TODO-Ethworks handle other transactions
+      );
       return {
         block,
-        blockResult: result,
+        blockResult,
         ...traces,
       };
     }
@@ -306,45 +300,21 @@ export class HardhatNode extends EventEmitter {
   public async runCall(
     call: CallParams,
     blockNumber: BN | null
-  ): Promise<{
-    result: Buffer;
-    trace: MessageTrace | undefined;
-    error?: Error;
-    consoleLogMessages: string[];
-  }> {
+  ): Promise<RunCallResult> {
     const tx = await this._getFakeTransaction({
       ...call,
-      nonce: await this.getAccountNonce(call.from, null),
+      nonce: await this.getAccountNonce(call.from, null), // TODO-Ethworks shouldn't the second argument be blockNumber?
     });
 
     const result = await this._runInBlockContext(blockNumber, () =>
       this._runTxAndRevertMutations(tx, blockNumber === null)
     );
 
-    let vmTrace = this._vmTracer.getLastTopLevelMessageTrace();
-    const vmTracerError = this._vmTracer.getLastError();
-    this._vmTracer.clearLastError();
-
-    if (vmTrace !== undefined) {
-      vmTrace = this._vmTraceDecoder.tryToDecodeMessageTrace(vmTrace);
-    }
-
-    const consoleLogMessages = await this._getConsoleLogMessages(
-      vmTrace,
-      vmTracerError
-    );
-
-    const error = await this._manageErrors(
-      result.execResult,
-      vmTrace,
-      vmTracerError
-    );
+    const traces = await this._gatherTraces(result.execResult);
 
     return {
+      ...traces,
       result: result.execResult.returnValue,
-      trace: vmTrace,
-      error,
-      consoleLogMessages,
     };
   }
 
@@ -808,7 +778,7 @@ export class HardhatNode extends EventEmitter {
     this._txPool.setBlockGasLimit(gasLimit);
   }
 
-  private async _gatherTraces(result: RunBlockResult) {
+  private async _gatherTraces(result: ExecResult): Promise<GatherTracesResult> {
     let vmTrace = this._vmTracer.getLastTopLevelMessageTrace();
     const vmTracerError = this._vmTracer.getLastError();
     this._vmTracer.clearLastError();
@@ -822,11 +792,7 @@ export class HardhatNode extends EventEmitter {
       vmTracerError
     );
 
-    const error = await this._manageErrors(
-      result.results[0].execResult,
-      vmTrace,
-      vmTracerError
-    );
+    const error = await this._manageErrors(result, vmTrace, vmTracerError);
 
     return {
       trace: vmTrace,
