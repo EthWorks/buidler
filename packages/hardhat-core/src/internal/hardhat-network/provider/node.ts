@@ -479,7 +479,7 @@ export class HardhatNode extends EventEmitter {
   }
 
   public getNextBlockTimestamp(): BN {
-    return this._nextBlockTimestamp;
+    return this._nextBlockTimestamp.clone();
   }
 
   public setNextBlockTimestamp(timestamp: BN) {
@@ -487,7 +487,7 @@ export class HardhatNode extends EventEmitter {
   }
 
   public getTimeIncrement(): BN {
-    return this._blockTimeOffsetSeconds;
+    return this._blockTimeOffsetSeconds.clone();
   }
 
   public setTimeIncrement(timeIncrement: BN) {
@@ -548,8 +548,8 @@ export class HardhatNode extends EventEmitter {
       latestBlock: await this.getLatestBlock(),
       stateRoot: await this._stateManager.getStateRoot(),
       txPoolSnapshotId: this._txPool.snapshot(),
-      blockTimeOffsetSeconds: this.getTimeIncrement().clone(),
-      nextBlockTimestamp: this.getNextBlockTimestamp().clone(),
+      blockTimeOffsetSeconds: this.getTimeIncrement(),
+      nextBlockTimestamp: this.getNextBlockTimestamp(),
     };
 
     this._snapshots.push(snapshot);
@@ -1093,14 +1093,12 @@ export class HardhatNode extends EventEmitter {
     // if timestamp is not provided, we check nextBlockTimestamp, if it is
     // set, we use it as the timestamp instead. If it is not set, we use
     // time offset + real time as the timestamp.
-    if (timestamp === undefined || timestamp.eq(new BN(0))) {
-      if (this.getNextBlockTimestamp().eq(new BN(0))) {
-        blockTimestamp = new BN(getCurrentTimestamp()).add(
-          this.getTimeIncrement()
-        );
+    if (timestamp === undefined || timestamp.eqn(0)) {
+      if (this.getNextBlockTimestamp().eqn(0)) {
+        blockTimestamp = this.getTimeIncrement().addn(getCurrentTimestamp());
         offsetShouldChange = false;
       } else {
-        blockTimestamp = this.getNextBlockTimestamp().clone();
+        blockTimestamp = this.getNextBlockTimestamp();
         offsetShouldChange = true;
       }
     } else {
@@ -1109,7 +1107,7 @@ export class HardhatNode extends EventEmitter {
     }
 
     if (offsetShouldChange) {
-      newOffset = blockTimestamp.sub(new BN(getCurrentTimestamp()));
+      newOffset = blockTimestamp.subn(getCurrentTimestamp());
     }
 
     return [blockTimestamp, offsetShouldChange, newOffset];
