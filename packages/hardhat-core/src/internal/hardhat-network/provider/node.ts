@@ -285,7 +285,7 @@ export class HardhatNode extends EventEmitter {
   public async mineBlock(returnResult: true, timestamp?: BN): Promise<RunTransactionResult>; // tslint:disable-line:prettier
   public async mineBlock(returnResult?: false, timestamp?: BN): Promise<void>;
   public async mineBlock(returnResult = false, timestamp?: BN): Promise<RunTransactionResult | void> { // tslint:disable-line:prettier
-    const [block, blockResult] = await this._mineBlockUnsafe(timestamp);
+    const [block, blockResult] = await this._mineAndSaveBlock(timestamp);
     if (returnResult) {
       const traces = await this._gatherTraces(
         blockResult.results[0].execResult // TODO-Ethworks handle other transactions
@@ -819,7 +819,7 @@ export class HardhatNode extends EventEmitter {
     }
   }
 
-  private async _mineBlockUnsafe(
+  private async _mineAndSaveBlock(
     timestamp?: BN
   ): Promise<[Block, RunBlockResult]> {
     const [
