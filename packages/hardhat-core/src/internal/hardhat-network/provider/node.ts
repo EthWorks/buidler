@@ -881,7 +881,7 @@ export class HardhatNode extends EventEmitter {
         bloom.or(txResult.bloom);
         results.push(txResult);
         receipts.push(this._createReceipt(txResult));
-        await this._addTransactionToBlock(block, tx);
+        block.transactions.push(tx);
 
         gasLeft.isub(txResult.gasUsed);
         txHeap.shift();
@@ -893,6 +893,7 @@ export class HardhatNode extends EventEmitter {
 
     await this._txPool.clean();
     await this._assignBlockReward();
+    await this._updateTransactionsRoot(block);
     block.header.gasUsed = toBuffer(blockGasLimit.sub(gasLeft));
     block.header.stateRoot = await this._stateManager.getStateRoot();
     block.header.bloom = bloom.bitvector;
@@ -948,11 +949,6 @@ export class HardhatNode extends EventEmitter {
       bitvector: txResult.bloom.bitvector,
       logs: txResult.execResult.logs ?? [],
     };
-  }
-
-  private async _updateTransactionsRoot(block: Block) {
-    await new Promise((resolve) => block.genTxTrie(resolve));
-    block.header.transactionsTrie = block.txTrie.root;
   }
 
   private async _getFakeTransaction(
@@ -1168,9 +1164,11 @@ export class HardhatNode extends EventEmitter {
 
   private async _addTransactionToBlock(block: Block, tx: Transaction) {
     block.transactions.push(tx);
+    await this._updateTransactionsRoot(block);
+  }
 
+  private async _updateTransactionsRoot(block: Block) {
     await new Promise((resolve) => block.genTxTrie(resolve));
-
     block.header.transactionsTrie = block.txTrie.root;
   }
 
