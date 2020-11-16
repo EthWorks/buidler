@@ -1288,10 +1288,16 @@ export class HardhatNode extends EventEmitter {
     blockNumber: BN | null,
     action: () => Promise<T>
   ): Promise<T> {
-    if (
-      blockNumber === null ||
-      blockNumber.eq(await this.getLatestBlockNumber())
-    ) {
+    if (blockNumber === null) {
+      const snapshotId = await this.takeSnapshot();
+      await this.mineBlock(false);
+      const result = await action();
+      await this.revertToSnapshot(snapshotId);
+
+      return result;
+    }
+
+    if (blockNumber.eq(await this.getLatestBlockNumber())) {
       return action();
     }
 
