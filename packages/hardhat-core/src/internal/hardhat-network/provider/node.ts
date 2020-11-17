@@ -82,7 +82,6 @@ import { makeForkCommon } from "./utils/makeForkCommon";
 import { makeStateTrie } from "./utils/makeStateTrie";
 import { putGenesisAccounts } from "./utils/putGenesisAccounts";
 import { putGenesisBlock } from "./utils/putGenesisBlock";
-import { setTemporaryGasLimit } from "./utils/setTemporaryGasLimit";
 import { txMapToArray } from "./utils/txMapToArray";
 
 const log = debug("hardhat:core:hardhat-network:node");
@@ -912,16 +911,18 @@ export class HardhatNode extends EventEmitter {
     block: Block,
     gasLeft: BN
   ): Promise<RunTxResult | null> {
-    const executionGasLimit = BN.min(new BN(tx.gasLimit), gasLeft);
-    const resetGasLimit = setTemporaryGasLimit(tx, executionGasLimit);
+    const preRunStateRoot = await this._stateManager.getStateRoot();
     try {
-      return await this._vm.runTx({ tx, block });
+      const result = await this._vm.runTx({ tx, block });
+      if (result.gasUsed.gt(gasLeft)) {
+        await this._stateManager.setStateRoot(preRunStateRoot);
+        return null;
+      }
+      return result;
     } catch (e) {
       // TODO-Ethworks throw if automine enabled?
       // TODO-Ethworks consider logging the error
       return null;
-    } finally {
-      resetGasLimit();
     }
   }
 
