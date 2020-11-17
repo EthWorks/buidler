@@ -1064,6 +1064,43 @@ describe("Eth module", function () {
           );
         });
 
+        it("Should return the deployed code in the context of a new block with 'pending' block tag param", async function () {
+          const snapshotId = await this.provider.send("evm_snapshot");
+          const contractAddressBefore = await deployContract(
+            this.provider,
+            `0x${EXAMPLE_CONTRACT.bytecode.object}`
+          );
+
+          assert.isNotNull(contractAddressBefore);
+
+          const contractCodeBefore = await this.provider.send("eth_getCode", [
+            contractAddressBefore,
+            "latest",
+          ]);
+
+          await this.provider.send("evm_revert", [snapshotId]);
+          await this.provider.send("evm_setAutomineEnabled", [false]);
+
+          const txHash = await this.provider.send("eth_sendTransaction", [
+            {
+              from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+              data: `0x${EXAMPLE_CONTRACT.bytecode.object}`,
+              gas: numberToRpcQuantity(DEFAULT_BLOCK_GAS_LIMIT),
+            },
+          ]);
+          const contractAddressAfter = await this.provider.send(
+            "eth_getTransactionReceipt",
+            [txHash]
+          );
+          const contractCodeAfter = await this.provider.send("eth_getCode", [
+            contractAddressBefore,
+            "pending",
+          ]);
+
+          assert.isNull(contractAddressAfter);
+          assert.strictEqual(contractCodeAfter, contractCodeBefore);
+        });
+
         it("Should throw invalid input error if called in the context of a nonexistent block", async function () {
           const firstBlock = await getFirstBlock();
           const futureBlock = firstBlock + 1;
