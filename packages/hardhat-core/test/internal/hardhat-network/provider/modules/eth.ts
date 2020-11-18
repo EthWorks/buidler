@@ -2476,6 +2476,33 @@ describe("Eth module", function () {
           );
         });
 
+        it("Should return transaction count in context of a new block with 'pending' block tag param", async function () {
+          await this.provider.send("evm_setAutomineEnabled", [false]);
+          await this.provider.send("eth_sendTransaction", [
+            {
+              from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+              to: DEFAULT_ACCOUNTS_ADDRESSES[1],
+              value: numberToRpcQuantity(1),
+            },
+          ]);
+
+          assertQuantity(
+            await this.provider.send("eth_getTransactionCount", [
+              DEFAULT_ACCOUNTS_ADDRESSES[0],
+              "latest",
+            ]),
+            0
+          );
+
+          assertQuantity(
+            await this.provider.send("eth_getTransactionCount", [
+              DEFAULT_ACCOUNTS_ADDRESSES[0],
+              "pending",
+            ]),
+            1
+          );
+        });
+
         it("Should throw invalid input error if called in the context of a nonexistent block", async function () {
           const firstBlock = await getFirstBlock();
           const futureBlock = firstBlock + 1;
