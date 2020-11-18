@@ -1963,6 +1963,31 @@ describe("Eth module", function () {
                   "0x1234567890123456789012345678901234567890123456789012345678901234"
                 );
               });
+
+              it("Should return a zero-value 32-byte DATA string in the context of the first block with 'earliest' block tag param", async function () {
+                const exampleContract = await deployContract(
+                  this.provider,
+                  `0x${EXAMPLE_CONTRACT.bytecode.object}`
+                );
+
+                assert.strictEqual(
+                  await this.provider.send("eth_getStorageAt", [
+                    exampleContract,
+                    numberToRpcQuantity(2),
+                    "latest",
+                  ]),
+                  "0x1234567890123456789012345678901234567890123456789012345678901234"
+                );
+
+                assert.strictEqual(
+                  await this.provider.send("eth_getStorageAt", [
+                    exampleContract,
+                    numberToRpcQuantity(2),
+                    "earliest",
+                  ]),
+                  "0x0000000000000000000000000000000000000000000000000000000000000000"
+                );
+              });
             });
 
             describe("When less than 32 bytes where written", function () {
