@@ -127,6 +127,31 @@ describe("Hardhat module", function () {
           assert.isTrue(result);
         });
 
+        it("hardhat_reset resets tx pool", async function () {
+          await this.provider.send("evm_setAutomineEnabled", [false]);
+          await this.provider.send("eth_sendTransaction", [
+            {
+              from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+              to: "0x1111111111111111111111111111111111111111",
+              nonce: numberToRpcQuantity(0),
+            },
+          ]);
+
+          const pendingTxsBefore = await this.provider.send(
+            "eth_pendingTransactions"
+          );
+
+          const result = await this.provider.send("hardhat_reset");
+
+          const pendingTxsAfter = await this.provider.send(
+            "eth_pendingTransactions"
+          );
+
+          assert.isTrue(result);
+          assert.lengthOf(pendingTxsBefore, 1);
+          assert.lengthOf(pendingTxsAfter, 0);
+        });
+
         describe("tests using sinon", () => {
           let sinonClock: sinon.SinonFakeTimers;
 
@@ -167,22 +192,12 @@ describe("Hardhat module", function () {
               },
             ]);
 
-            const pendingTxsBefore = await this.provider.send(
-              "eth_pendingTransactions"
-            );
-            assert.lengthOf(pendingTxsBefore, 1);
-
             const result = await this.provider.send("hardhat_reset");
             assert.isTrue(result);
 
-            const pendingTxsAfter = await this.provider.send(
-              "eth_pendingTransactions"
-            );
-            assert.lengthOf(pendingTxsAfter, 0);
-
             const firstBlockAfter = await getLatestBlockNumber();
 
-            await sinonClock.tickAsync(1 * interval);
+            await sinonClock.tickAsync(interval);
 
             const secondBlockAfter = await getLatestBlockNumber();
             assert.equal(secondBlockAfter, firstBlockAfter);
