@@ -128,61 +128,70 @@ describe("Hardhat module", function () {
           assert.isTrue(result);
         });
 
-        it("resets interval mining", async function () {
-          const sinonClock = sinon.useFakeTimers({
-            now: Date.now(),
-            toFake: ["Date", "setTimeout", "clearTimeout"],
-          });
-          const interval = 15_000;
+        describe("tests using sinon", () => {
+          let sinonClock: sinon.SinonFakeTimers;
 
-          await this.provider.send("evm_setAutomineEnabled", [false]);
-          await this.provider.send("evm_setIntervalMining", [
-            {
-              enabled: true,
-              blockTime: interval,
-            },
-          ]);
-
-          const initialBlockNumberBefore = await getLatestBlockNumber();
-
-          await sinonClock.tickAsync(interval);
-
-          await waitForAssert(10, async () => {
-            const currentBlockNumber = await getLatestBlockNumber();
-            assert.equal(currentBlockNumber, initialBlockNumberBefore + 1);
+          beforeEach(() => {
+            sinonClock = sinon.useFakeTimers({
+              now: Date.now(),
+              toFake: ["Date", "setTimeout", "clearTimeout"],
+            });
           });
 
-          await this.provider.send("eth_sendTransaction", [
-            {
-              from: DEFAULT_ACCOUNTS_ADDRESSES[0],
-              to: "0x1111111111111111111111111111111111111111",
-              nonce: numberToRpcQuantity(0),
-            },
-          ]);
-
-          const pendingTxsBefore = await this.provider.send(
-            "eth_pendingTransactions"
-          );
-          assert.lengthOf(pendingTxsBefore, 1);
-
-          const result = await this.provider.send("hardhat_reset");
-          assert.isTrue(result);
-
-          const pendingTxsAfter = await this.provider.send(
-            "eth_pendingTransactions"
-          );
-          assert.lengthOf(pendingTxsAfter, 0);
-
-          const initialBlockNumberAfter = await getLatestBlockNumber();
-
-          await sinonClock.tickAsync(30 * interval);
-
-          await waitForAssert(10, async () => {
-            const currentBlockNumber = await getLatestBlockNumber();
-            assert.equal(currentBlockNumber, initialBlockNumberAfter);
+          afterEach(() => {
+            sinonClock.restore();
           });
 
-          sinonClock.restore();
+          it("resets interval mining", async function () {
+            const interval = 15_000;
+
+            await this.provider.send("evm_setAutomineEnabled", [false]);
+            await this.provider.send("evm_setIntervalMining", [
+              {
+                enabled: true,
+                blockTime: interval,
+              },
+            ]);
+
+            const initialBlockNumberBefore = await getLatestBlockNumber();
+
+            await sinonClock.tickAsync(interval);
+
+            await waitForAssert(10, async () => {
+              const currentBlockNumber = await getLatestBlockNumber();
+              assert.equal(currentBlockNumber, initialBlockNumberBefore + 1);
+            });
+
+            await this.provider.send("eth_sendTransaction", [
+              {
+                from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+                to: "0x1111111111111111111111111111111111111111",
+                nonce: numberToRpcQuantity(0),
+              },
+            ]);
+
+            const pendingTxsBefore = await this.provider.send(
+              "eth_pendingTransactions"
+            );
+            assert.lengthOf(pendingTxsBefore, 1);
+
+            const result = await this.provider.send("hardhat_reset");
+            assert.isTrue(result);
+
+            const pendingTxsAfter = await this.provider.send(
+              "eth_pendingTransactions"
+            );
+            assert.lengthOf(pendingTxsAfter, 0);
+
+            const initialBlockNumberAfter = await getLatestBlockNumber();
+
+            await sinonClock.tickAsync(30 * interval);
+
+            await waitForAssert(10, async () => {
+              const currentBlockNumber = await getLatestBlockNumber();
+              assert.equal(currentBlockNumber, initialBlockNumberAfter);
+            });
+          });
         });
 
         if (isFork) {
