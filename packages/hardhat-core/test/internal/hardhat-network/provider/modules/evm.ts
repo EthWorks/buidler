@@ -16,10 +16,21 @@ import {
   assertLatestBlockNumber,
   assertQuantity,
 } from "../../helpers/assertions";
-import { EXAMPLE_CONTRACT } from "../../helpers/contracts";
-import { quantityToBN, quantityToNumber } from "../../helpers/conversions";
+import {
+  EXAMPLE_CONTRACT,
+  EXAMPLE_READ_CONTRACT,
+} from "../../helpers/contracts";
+import {
+  dataToNumber,
+  quantityToBN,
+  quantityToNumber,
+} from "../../helpers/conversions";
 import { setCWD } from "../../helpers/cwd";
-import { DEFAULT_ACCOUNTS_ADDRESSES, PROVIDERS } from "../../helpers/providers";
+import {
+  DEFAULT_ACCOUNTS_ADDRESSES,
+  DEFAULT_BLOCK_GAS_LIMIT,
+  PROVIDERS,
+} from "../../helpers/providers";
 import { retrieveForkBlockNumber } from "../../helpers/retrieveForkBlockNumber";
 import { sleep } from "../../helpers/sleep";
 import { deployContract } from "../../helpers/transactions";
@@ -320,6 +331,49 @@ describe("Evm module", function () {
           );
 
           assert.isTrue(quantityToNumber(block.timestamp) > timestamp);
+        });
+
+        it("should mine transactions with original gasLimit values", async function () {
+          const contractAddress = await deployContract(
+            this.provider,
+            `0x${EXAMPLE_READ_CONTRACT.bytecode.object}`
+          );
+
+          await this.provider.send("evm_setAutomineEnabled", [false]);
+
+          const tx1Hash = await this.provider.send("eth_sendTransaction", [
+            {
+              nonce: numberToRpcQuantity(1),
+              from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+              to: contractAddress,
+              data: EXAMPLE_READ_CONTRACT.selectors.gasLeft,
+              gas: numberToRpcQuantity(DEFAULT_BLOCK_GAS_LIMIT),
+            },
+          ]);
+
+          const tx2Hash = await this.provider.send("eth_sendTransaction", [
+            {
+              nonce: numberToRpcQuantity(2),
+              from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+              to: contractAddress,
+              data: EXAMPLE_READ_CONTRACT.selectors.gasLeft,
+              gas: numberToRpcQuantity(DEFAULT_BLOCK_GAS_LIMIT),
+            },
+          ]);
+
+          await this.provider.send("evm_mine");
+
+          const [logTx1, logTx2] = await this.provider.send("eth_getLogs", [
+            { address: contractAddress },
+          ]);
+
+          const gasUsedUntilGasLeftCall = 21_185; // value established empirically using Remix on Rinkeby network
+          const expectedGasLeft = DEFAULT_BLOCK_GAS_LIMIT - gasUsedUntilGasLeftCall;
+
+          assert.equal(logTx1.transactionHash, tx1Hash);
+          assert.equal(logTx2.transactionHash, tx2Hash);
+          assert.equal(dataToNumber(logTx1.data), expectedGasLeft);
+          assert.equal(dataToNumber(logTx2.data), expectedGasLeft);
         });
 
         describe("tests using sinon", () => {
