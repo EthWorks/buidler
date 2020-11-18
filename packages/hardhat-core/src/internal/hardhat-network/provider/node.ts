@@ -281,9 +281,11 @@ export class HardhatNode extends EventEmitter {
     }
   }
 
-  public async mineBlock(returnResult: true, timestamp?: BN): Promise<RunTransactionResult>; // tslint:disable-line:prettier
+  // prettier-ignore
+  public async mineBlock(returnResult: true, timestamp?: BN): Promise<RunTransactionResult>;
   public async mineBlock(returnResult?: false, timestamp?: BN): Promise<void>;
-  public async mineBlock(returnResult = false, timestamp?: BN): Promise<RunTransactionResult | void> { // tslint:disable-line:prettier
+  // prettier-ignore
+  public async mineBlock(returnResult = false, timestamp?: BN): Promise<RunTransactionResult | void> {
     const [block, blockResult] = await this._mineAndSaveBlock(timestamp);
     if (returnResult) {
       const traces = await this._gatherTraces(

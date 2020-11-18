@@ -368,7 +368,8 @@ describe("Evm module", function () {
           ]);
 
           const gasUsedUntilGasLeftCall = 21_185; // value established empirically using Remix on Rinkeby network
-          const expectedGasLeft = DEFAULT_BLOCK_GAS_LIMIT - gasUsedUntilGasLeftCall;
+          const expectedGasLeft =
+            DEFAULT_BLOCK_GAS_LIMIT - gasUsedUntilGasLeftCall;
 
           assert.equal(logTx1.transactionHash, tx1Hash);
           assert.equal(logTx2.transactionHash, tx2Hash);
