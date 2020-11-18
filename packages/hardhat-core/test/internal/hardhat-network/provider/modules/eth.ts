@@ -1894,6 +1894,49 @@ describe("Eth module", function () {
                   "0x1234567890123456789012345678901234567890123456789012345678901234"
                 );
               });
+
+              it("Should return a 32-byte DATA string in the context of a new block with 'pending' block tag param", async function () {
+                const snapshotId = await this.provider.send("evm_snapshot");
+                const contractAddressBefore = await deployContract(
+                  this.provider,
+                  `0x${EXAMPLE_CONTRACT.bytecode.object}`
+                );
+
+                await this.provider.send("evm_revert", [snapshotId]);
+                await this.provider.send("evm_setAutomineEnabled", [false]);
+
+                const txHash = await this.provider.send("eth_sendTransaction", [
+                  {
+                    from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+                    data: `0x${EXAMPLE_CONTRACT.bytecode.object}`,
+                    gas: numberToRpcQuantity(DEFAULT_BLOCK_GAS_LIMIT),
+                  },
+                ]);
+                const contractAddressAfter = await this.provider.send(
+                  "eth_getTransactionReceipt",
+                  [txHash]
+                );
+
+                assert.isNotNull(contractAddressBefore);
+                assert.isNull(contractAddressAfter);
+
+                assert.strictEqual(
+                  await this.provider.send("eth_getStorageAt", [
+                    contractAddressBefore,
+                    numberToRpcQuantity(2),
+                  ]),
+                  "0x0000000000000000000000000000000000000000000000000000000000000000"
+                );
+
+                assert.strictEqual(
+                  await this.provider.send("eth_getStorageAt", [
+                    contractAddressBefore,
+                    numberToRpcQuantity(2),
+                    "pending",
+                  ]),
+                  "0x1234567890123456789012345678901234567890123456789012345678901234"
+                );
+              });
             });
 
             describe("When less than 32 bytes where written", function () {
