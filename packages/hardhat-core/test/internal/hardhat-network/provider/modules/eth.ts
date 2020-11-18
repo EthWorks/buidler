@@ -1869,7 +1869,7 @@ describe("Eth module", function () {
           });
 
           describe("When a slot has been written into", function () {
-            describe("When 32 bytes where written", function () {
+            describe("When 32 bytes were written", function () {
               it("Should return a 32-byte DATA string", async function () {
                 const firstBlock = await getFirstBlock();
                 const exampleContract = await deployContract(
