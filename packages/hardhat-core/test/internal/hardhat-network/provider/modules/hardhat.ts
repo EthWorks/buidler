@@ -182,7 +182,7 @@ describe("Hardhat module", function () {
 
             const firstBlockAfter = await getLatestBlockNumber();
 
-            await sinonClock.tickAsync(30 * interval);
+            await sinonClock.tickAsync(1 * interval);
 
             const secondBlockAfter = await getLatestBlockNumber();
             assert.equal(secondBlockAfter, firstBlockAfter);
