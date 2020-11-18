@@ -2,7 +2,7 @@ import { assert } from "chai";
 import { bufferToHex } from "ethereumjs-util";
 import sinon from "sinon";
 
-import { numberToRpcQuantity } from "../../../../../internal/hardhat-network/provider/output";
+import { numberToRpcQuantity } from "../../../../../src/internal/hardhat-network/provider/output";
 import { ALCHEMY_URL } from "../../../../setup";
 import { assertInvalidArgumentsError } from "../../helpers/assertions";
 import { EMPTY_ACCOUNT_ADDRESS } from "../../helpers/constants";
