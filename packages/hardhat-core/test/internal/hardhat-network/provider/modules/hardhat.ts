@@ -9,7 +9,6 @@ import { EMPTY_ACCOUNT_ADDRESS } from "../../helpers/constants";
 import { quantityToNumber } from "../../helpers/conversions";
 import { setCWD } from "../../helpers/cwd";
 import { DEFAULT_ACCOUNTS_ADDRESSES, PROVIDERS } from "../../helpers/providers";
-import { waitForAssert } from "../../helpers/waitForAssert";
 
 describe("Hardhat module", function () {
   PROVIDERS.forEach(({ name, useProvider, isFork }) => {
@@ -153,14 +152,12 @@ describe("Hardhat module", function () {
               },
             ]);
 
-            const initialBlockNumberBefore = await getLatestBlockNumber();
+            const firstBlockBefore = await getLatestBlockNumber();
 
             await sinonClock.tickAsync(interval);
 
-            await waitForAssert(10, async () => {
-              const currentBlockNumber = await getLatestBlockNumber();
-              assert.equal(currentBlockNumber, initialBlockNumberBefore + 1);
-            });
+            const secondBlockBefore = await getLatestBlockNumber();
+            assert.equal(secondBlockBefore, firstBlockBefore + 1);
 
             await this.provider.send("eth_sendTransaction", [
               {
@@ -183,14 +180,12 @@ describe("Hardhat module", function () {
             );
             assert.lengthOf(pendingTxsAfter, 0);
 
-            const initialBlockNumberAfter = await getLatestBlockNumber();
+            const firstBlockAfter = await getLatestBlockNumber();
 
             await sinonClock.tickAsync(30 * interval);
 
-            await waitForAssert(10, async () => {
-              const currentBlockNumber = await getLatestBlockNumber();
-              assert.equal(currentBlockNumber, initialBlockNumberAfter);
-            });
+            const secondBlockAfter = await getLatestBlockNumber();
+            assert.equal(secondBlockAfter, firstBlockAfter);
           });
         });
 
