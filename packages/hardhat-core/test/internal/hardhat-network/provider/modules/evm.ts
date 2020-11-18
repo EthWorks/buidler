@@ -9,7 +9,6 @@ import {
   RpcTransactionOutput,
 } from "../../../../../src/internal/hardhat-network/provider/output";
 import { getCurrentTimestamp } from "../../../../../src/internal/hardhat-network/provider/utils/getCurrentTimestamp";
-import { EthereumProvider } from "../../../../../src/types";
 import { useEnvironment } from "../../../../helpers/environment";
 import { useFixtureProject } from "../../../../helpers/project";
 import {
@@ -20,33 +19,11 @@ import {
 import { EXAMPLE_CONTRACT } from "../../helpers/contracts";
 import { quantityToBN, quantityToNumber } from "../../helpers/conversions";
 import { setCWD } from "../../helpers/cwd";
-import {
-  DEFAULT_ACCOUNTS_ADDRESSES,
-  DEFAULT_BLOCK_GAS_LIMIT,
-  PROVIDERS,
-} from "../../helpers/providers";
+import { DEFAULT_ACCOUNTS_ADDRESSES, PROVIDERS } from "../../helpers/providers";
 import { retrieveForkBlockNumber } from "../../helpers/retrieveForkBlockNumber";
 import { sleep } from "../../helpers/sleep";
+import { deployContract } from "../../helpers/transactions";
 import { waitForAssert } from "../../helpers/waitForAssert";
-
-async function deployContract(
-  provider: EthereumProvider,
-  deploymentCode: string
-) {
-  const hash = await provider.send("eth_sendTransaction", [
-    {
-      from: DEFAULT_ACCOUNTS_ADDRESSES[0],
-      data: deploymentCode,
-      gas: numberToRpcQuantity(DEFAULT_BLOCK_GAS_LIMIT),
-    },
-  ]);
-
-  const { contractAddress } = await provider.send("eth_getTransactionReceipt", [
-    hash,
-  ]);
-
-  return contractAddress;
-}
 
 describe("Evm module", function () {
   PROVIDERS.forEach(({ name, useProvider, isFork }) => {
