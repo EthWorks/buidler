@@ -47,8 +47,28 @@ describe("Interval mining provider", () => {
         });
       });
 
-      describe("evm_reset", () => {
-        // TODO-Ethworks
+      describe("hardhat_reset", () => {
+        it("starts interval mining", async function () {
+          const getBlockNumber = async () =>
+            quantityToNumber(await this.provider.send("eth_blockNumber"));
+
+          const firstBlock = await getBlockNumber();
+
+          await clock.tickAsync(blockTime);
+          const secondBlockBeforeReset = await getBlockNumber();
+
+          await this.provider.send("hardhat_reset");
+
+          await clock.tickAsync(blockTime);
+          const secondBlockAfterReset = await getBlockNumber();
+
+          await clock.tickAsync(blockTime);
+          const thirdBlock = await getBlockNumber();
+
+          assert.equal(secondBlockBeforeReset, firstBlock + 1);
+          assert.equal(secondBlockAfterReset, firstBlock + 1);
+          assert.equal(thirdBlock, firstBlock + 2);
+        });
       });
     });
   });
