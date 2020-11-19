@@ -159,11 +159,11 @@ export class VMTracer {
       this._messageTraces.push(trace);
       next();
     } catch (error) {
-      if (!this._throwErrors) {
+      if (this._throwErrors) {
+        next(error);
+      } else {
         this._lastError = error;
         next();
-      } else {
-        next(error);
       }
     }
   }
@@ -186,11 +186,11 @@ export class VMTracer {
       trace.steps.push({ pc: step.pc });
       next();
     } catch (error) {
-      if (!this._throwErrors) {
+      if (this._throwErrors) {
+        next(error);
+      } else {
         this._lastError = error;
         next();
-      } else {
-        next(error);
       }
     }
   }
@@ -218,11 +218,11 @@ export class VMTracer {
 
       next();
     } catch (error) {
-      if (!this._throwErrors) {
+      if (this._throwErrors) {
+        next(error);
+      } else {
         this._lastError = error;
         next();
-      } else {
-        next(error);
       }
     }
   }
