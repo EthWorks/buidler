@@ -9,7 +9,6 @@ import {
   RpcTransactionOutput,
 } from "../../../../../src/internal/hardhat-network/provider/output";
 import { getCurrentTimestamp } from "../../../../../src/internal/hardhat-network/provider/utils/getCurrentTimestamp";
-import { EthereumProvider } from "../../../../../src/types";
 import { useEnvironment } from "../../../../helpers/environment";
 import { useFixtureProject } from "../../../../helpers/project";
 import {
@@ -17,8 +16,15 @@ import {
   assertLatestBlockNumber,
   assertQuantity,
 } from "../../helpers/assertions";
-import { EXAMPLE_CONTRACT } from "../../helpers/contracts";
-import { quantityToBN, quantityToNumber } from "../../helpers/conversions";
+import {
+  EXAMPLE_CONTRACT,
+  EXAMPLE_READ_CONTRACT,
+} from "../../helpers/contracts";
+import {
+  dataToNumber,
+  quantityToBN,
+  quantityToNumber,
+} from "../../helpers/conversions";
 import { setCWD } from "../../helpers/cwd";
 import {
   DEFAULT_ACCOUNTS_ADDRESSES,
@@ -27,26 +33,7 @@ import {
 } from "../../helpers/providers";
 import { retrieveForkBlockNumber } from "../../helpers/retrieveForkBlockNumber";
 import { sleep } from "../../helpers/sleep";
-import { waitForAssert } from "../../helpers/waitForAssert";
-
-async function deployContract(
-  provider: EthereumProvider,
-  deploymentCode: string
-) {
-  const hash = await provider.send("eth_sendTransaction", [
-    {
-      from: DEFAULT_ACCOUNTS_ADDRESSES[0],
-      data: deploymentCode,
-      gas: numberToRpcQuantity(DEFAULT_BLOCK_GAS_LIMIT),
-    },
-  ]);
-
-  const { contractAddress } = await provider.send("eth_getTransactionReceipt", [
-    hash,
-  ]);
-
-  return contractAddress;
-}
+import { deployContract } from "../../helpers/transactions";
 
 describe("Evm module", function () {
   PROVIDERS.forEach(({ name, useProvider, isFork }) => {
@@ -345,6 +332,50 @@ describe("Evm module", function () {
           assert.isTrue(quantityToNumber(block.timestamp) > timestamp);
         });
 
+        it("should mine transactions with original gasLimit values", async function () {
+          const contractAddress = await deployContract(
+            this.provider,
+            `0x${EXAMPLE_READ_CONTRACT.bytecode.object}`
+          );
+
+          await this.provider.send("evm_setAutomineEnabled", [false]);
+
+          const tx1Hash = await this.provider.send("eth_sendTransaction", [
+            {
+              nonce: numberToRpcQuantity(1),
+              from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+              to: contractAddress,
+              data: EXAMPLE_READ_CONTRACT.selectors.gasLeft,
+              gas: numberToRpcQuantity(DEFAULT_BLOCK_GAS_LIMIT),
+            },
+          ]);
+
+          const tx2Hash = await this.provider.send("eth_sendTransaction", [
+            {
+              nonce: numberToRpcQuantity(2),
+              from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+              to: contractAddress,
+              data: EXAMPLE_READ_CONTRACT.selectors.gasLeft,
+              gas: numberToRpcQuantity(DEFAULT_BLOCK_GAS_LIMIT),
+            },
+          ]);
+
+          await this.provider.send("evm_mine");
+
+          const [logTx1, logTx2] = await this.provider.send("eth_getLogs", [
+            { address: contractAddress },
+          ]);
+
+          const gasUsedUntilGasLeftCall = 21_185; // value established empirically using Remix on Rinkeby network
+          const expectedGasLeft =
+            DEFAULT_BLOCK_GAS_LIMIT - gasUsedUntilGasLeftCall;
+
+          assert.equal(logTx1.transactionHash, tx1Hash);
+          assert.equal(logTx2.transactionHash, tx2Hash);
+          assert.equal(dataToNumber(logTx1.data), expectedGasLeft);
+          assert.equal(dataToNumber(logTx2.data), expectedGasLeft);
+        });
+
         describe("tests using sinon", () => {
           let sinonClock: sinon.SinonFakeTimers;
 
@@ -491,10 +522,8 @@ describe("Evm module", function () {
 
               await sinonClock.tickAsync(interval);
 
-              await waitForAssert(10, async () => {
-                const currentBlock = await getBlockNumber();
-                assert.equal(currentBlock, initialBlock + 1);
-              });
+              const currentBlock = await getBlockNumber();
+              assert.equal(currentBlock, initialBlock + 1);
             });
 
             it("should continuously mine new blocks after each interval", async function () {
@@ -505,93 +534,64 @@ describe("Evm module", function () {
               ]);
 
               await sinonClock.tickAsync(interval);
-
-              await waitForAssert(10, async () => {
-                const currentBlock = await getBlockNumber();
-                assert.equal(currentBlock, initialBlock + 1);
-              });
+              assert.equal(await getBlockNumber(), initialBlock + 1);
 
               await sinonClock.tickAsync(interval);
-
-              await waitForAssert(10, async () => {
-                const currentBlock = await getBlockNumber();
-                assert.equal(currentBlock, initialBlock + 2);
-              });
+              assert.equal(await getBlockNumber(), initialBlock + 2);
 
               await sinonClock.tickAsync(interval);
-
-              await waitForAssert(10, async () => {
-                const currentBlock = await getBlockNumber();
-                assert.equal(currentBlock, initialBlock + 3);
-              });
+              assert.equal(await getBlockNumber(), initialBlock + 3);
             });
 
-            it("automine and interval mining don't interfere with each other", async function () {
-              const sendTx = async (nonce: number) =>
-                this.provider.send("eth_sendTransaction", [
-                  {
-                    from: DEFAULT_ACCOUNTS_ADDRESSES[0],
-                    to: "0x1111111111111111111111111111111111111111",
-                    nonce: numberToRpcQuantity(nonce),
-                  },
-                ]);
+            const sendTx = async (nonce: number) =>
+              this.ctx.provider.send("eth_sendTransaction", [
+                {
+                  from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+                  to: "0x1111111111111111111111111111111111111111",
+                  nonce: numberToRpcQuantity(nonce),
+                },
+              ]);
 
+            const assertBlockWasMined = async (
+              blockNumber: number,
+              txHashes: string[]
+            ) => {
+              const currentTime = getCurrentTimestamp();
+              const block = await this.ctx.provider.send(
+                "eth_getBlockByNumber",
+                ["latest", false]
+              );
+
+              assert.equal(quantityToNumber(block.number), blockNumber);
+              assert.equal(quantityToNumber(block.timestamp), currentTime);
+              assert.deepEqual(block.transactions, txHashes);
+            };
+
+            it("automine and interval mining don't interfere with each other", async function () {
               const interval = 5000;
-              const initialBlockNumber = await getBlockNumber();
+              const initialBlock = await getBlockNumber();
+              const initialTimestamp = getCurrentTimestamp();
 
               await this.provider.send("evm_setAutomineEnabled", [false]);
-
               await this.provider.send("evm_setIntervalMining", [
                 { enabled: true, blockTime: interval },
               ]);
 
               await sinonClock.tickAsync(interval);
-
-              await waitForAssert(10, async () => {
-                const currentBlockNumber = await getBlockNumber();
-                assert.equal(currentBlockNumber, initialBlockNumber + 1);
-              });
+              await assertBlockWasMined(initialBlock + 1, []);
 
               const txHash1 = await sendTx(0);
-
               await sinonClock.tickAsync(interval);
-
-              await waitForAssert(15, async () => {
-                const currentBlock = await this.provider.send(
-                  "eth_getBlockByNumber",
-                  ["latest", false]
-                );
-
-                assert.equal(
-                  quantityToNumber(currentBlock.number),
-                  initialBlockNumber + 2
-                );
-                assert.lengthOf(currentBlock.transactions, 1);
-                assert.equal(currentBlock.transactions[0], txHash1);
-              });
+              await assertBlockWasMined(initialBlock + 2, [txHash1]);
 
               await this.provider.send("evm_setAutomineEnabled", [true]);
 
+              await sinonClock.tickAsync(interval / 2);
               const txHash2 = await sendTx(1);
+              await assertBlockWasMined(initialBlock + 3, [txHash2]);
 
-              const minedBlock = await this.provider.send(
-                "eth_getBlockByNumber",
-                ["latest", false]
-              );
-
-              assert.equal(
-                quantityToNumber(minedBlock.number),
-                initialBlockNumber + 3
-              );
-              assert.lengthOf(minedBlock.transactions, 1);
-              assert.equal(minedBlock.transactions[0], txHash2);
-
-              await sinonClock.tickAsync(interval);
-
-              await waitForAssert(10, async () => {
-                const currentBlockNumber = await getBlockNumber();
-                assert.equal(currentBlockNumber, initialBlockNumber + 4);
-              });
+              await sinonClock.tickAsync(interval / 2);
+              await assertBlockWasMined(initialBlock + 4, []);
             });
           });
 
