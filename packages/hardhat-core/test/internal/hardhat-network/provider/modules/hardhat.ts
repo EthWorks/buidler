@@ -184,14 +184,6 @@ describe("Hardhat module", function () {
             const secondBlockBefore = await getLatestBlockNumber();
             assert.equal(secondBlockBefore, firstBlockBefore + 1);
 
-            await this.provider.send("eth_sendTransaction", [
-              {
-                from: DEFAULT_ACCOUNTS_ADDRESSES[0],
-                to: "0x1111111111111111111111111111111111111111",
-                nonce: numberToRpcQuantity(0),
-              },
-            ]);
-
             const result = await this.provider.send("hardhat_reset");
             assert.isTrue(result);
 
