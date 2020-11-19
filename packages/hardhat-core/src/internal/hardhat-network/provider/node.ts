@@ -205,7 +205,7 @@ export class HardhatNode extends EventEmitter {
     this._vmTracer = new VMTracer(
       this._vm,
       this._stateManager.getContractCode.bind(this._stateManager),
-      true
+      false
     );
     this._vmTracer.enableTracing();
 
