@@ -675,18 +675,37 @@ export class EthModule {
 
   // eth_getTransactionByBlockNumberAndIndex
 
-  private _getTransactionByBlockNumberAndIndexParams(params: any[]): [BN, BN] {
-    return validateParams(params, rpcQuantity, rpcQuantity);
+  private _getTransactionByBlockNumberAndIndexParams(
+    params: any[]
+  ): [BlockTag, BN] {
+    return validateParams(params, blockTagType, rpcQuantity);
   }
 
   private async _getTransactionByBlockNumberAndIndexAction(
-    blockNumber: BN,
+    blockTag: BlockTag,
     index: BN
   ): Promise<RpcTransactionOutput | null> {
     const i = index.toNumber();
-    const block = await this._node.getBlockByNumber(blockNumber);
-    if (block === undefined) {
-      return null;
+    let blockNumber: BN | null;
+    let block: Block | undefined;
+
+    try {
+      blockNumber = await this._blockTagToBlockNumber(blockTag);
+    } catch (err) {
+      if (err instanceof InvalidInputError) {
+        return null;
+      }
+
+      throw err;
+    }
+
+    if (blockNumber === null) {
+      block = await this._node.getPendingBlock();
+    } else {
+      block = await this._node.getBlockByNumber(blockNumber);
+      if (block === undefined) {
+        return null;
+      }
     }
 
     const tx = block.transactions[i];

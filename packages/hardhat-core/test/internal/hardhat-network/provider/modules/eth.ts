@@ -2371,6 +2371,81 @@ describe("Eth module", function () {
             0
           );
         });
+
+        it("should return the right info for the existing transaction in the context of a new block with 'pending' block tag param", async function () {
+          const firstBlock = await getFirstBlock();
+          const txParams1: TransactionParams = {
+            to: toBuffer(zeroAddress()),
+            from: toBuffer(DEFAULT_ACCOUNTS_ADDRESSES[0]),
+            data: toBuffer("0xaa"),
+            nonce: new BN(0),
+            value: new BN(123),
+            gasLimit: new BN(25000),
+            gasPrice: new BN(23912),
+          };
+
+          await this.provider.send("evm_setAutomineEnabled", [false]);
+
+          const txHash = await sendTransactionFromTxParams(
+            this.provider,
+            txParams1
+          );
+
+          const block = await this.provider.send("eth_getBlockByNumber", [
+            "pending",
+            false,
+          ]);
+
+          const tx: RpcTransactionOutput = await this.provider.send(
+            "eth_getTransactionByBlockNumberAndIndex",
+            ["pending", numberToRpcQuantity(0)]
+          );
+
+          assertTransaction(
+            tx,
+            txHash,
+            txParams1,
+            firstBlock + 1,
+            block.hash,
+            0
+          );
+
+          await this.provider.send("evm_mine");
+
+          const txParams2: TransactionParams = {
+            to: toBuffer(zeroAddress()),
+            from: toBuffer(DEFAULT_ACCOUNTS_ADDRESSES[0]),
+            data: toBuffer([]),
+            nonce: new BN(1),
+            value: new BN(123),
+            gasLimit: new BN(80000),
+            gasPrice: new BN(239),
+          };
+
+          const txHash2 = await sendTransactionFromTxParams(
+            this.provider,
+            txParams2
+          );
+
+          const block2 = await this.provider.send("eth_getBlockByNumber", [
+            "pending",
+            false,
+          ]);
+
+          const tx2: RpcTransactionOutput = await this.provider.send(
+            "eth_getTransactionByBlockNumberAndIndex",
+            ["pending", numberToRpcQuantity(0)]
+          );
+
+          assertTransaction(
+            tx2,
+            txHash2,
+            txParams2,
+            firstBlock + 2,
+            block2.hash,
+            0
+          );
+        });
       });
 
       describe("eth_getTransactionByHash", async function () {
