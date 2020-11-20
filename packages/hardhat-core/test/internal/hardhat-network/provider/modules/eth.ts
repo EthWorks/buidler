@@ -1029,6 +1029,18 @@ describe("Eth module", function () {
             1
           );
         });
+
+        it("Should return 1 for a pending block", async function () {
+          await this.provider.send("evm_setAutomineEnabled", [false]);
+          await sendTxToZeroAddress(this.provider);
+
+          assertQuantity(
+            await this.provider.send("eth_getBlockTransactionCountByNumber", [
+              "pending",
+            ]),
+            1
+          );
+        });
       });
 
       describe("eth_getCode", async function () {

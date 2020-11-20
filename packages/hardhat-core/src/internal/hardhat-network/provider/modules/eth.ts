@@ -504,16 +504,33 @@ export class EthModule {
 
   // eth_getBlockTransactionCountByNumber
 
-  private _getBlockTransactionCountByNumberParams(params: any[]): [BN] {
-    return validateParams(params, rpcQuantity);
+  private _getBlockTransactionCountByNumberParams(params: any[]): [BlockTag] {
+    return validateParams(params, blockTagType);
   }
 
   private async _getBlockTransactionCountByNumberAction(
-    blockNumber: BN
+    blockTag: BlockTag
   ): Promise<string | null> {
-    const block = await this._node.getBlockByNumber(blockNumber);
-    if (block === undefined) {
-      return null;
+    let blockNumber: BN | null;
+    let block: Block | undefined;
+
+    try {
+      blockNumber = await this._blockTagToBlockNumber(blockTag);
+    } catch (err) {
+      if (err instanceof InvalidInputError) {
+        return null;
+      }
+
+      throw err;
+    }
+
+    if (blockNumber === null) {
+      block = await this._node.getPendingBlock();
+    } else {
+      block = await this._node.getBlockByNumber(blockNumber);
+      if (block === undefined) {
+        return null;
+      }
     }
 
     return numberToRpcQuantity(block.transactions.length);

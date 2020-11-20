@@ -358,6 +358,14 @@ export class HardhatNode extends EventEmitter {
     return new BN((await this.getLatestBlock()).header.number);
   }
 
+  public async getPendingBlock(): Promise<Block> {
+    const result = await this._runInBlockContext(null, () =>
+      this._blockchain.getLatestBlock()
+    );
+
+    return result;
+  }
+
   public async getPendingBlockAndTotalDifficulty(): Promise<[Block, BN]> {
     const result: [Block, BN] = await this._runInBlockContext(
       null,
