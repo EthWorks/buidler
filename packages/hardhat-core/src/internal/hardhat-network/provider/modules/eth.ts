@@ -457,6 +457,7 @@ export class EthModule {
     includeTransactions: boolean
   ): Promise<RpcBlockOutput | null> {
     let block: Block | undefined;
+    let totalDifficulty: BN | undefined;
 
     if (typeof tag === "string") {
       if (tag === "earliest") {
@@ -464,9 +465,10 @@ export class EthModule {
       } else if (tag === "latest") {
         block = await this._node.getLatestBlock();
       } else {
-        throw new InvalidInputError(
-          `eth_getBlockByNumber doesn't support ${tag}`
-        );
+        [
+          block,
+          totalDifficulty,
+        ] = await this._node.getPendingBlockAndTotalDifficulty();
       }
     } else {
       block = await this._node.getBlockByNumber(tag);
@@ -476,7 +478,9 @@ export class EthModule {
       return null;
     }
 
-    const totalDifficulty = await this._node.getBlockTotalDifficulty(block);
+    if (totalDifficulty === undefined) {
+      totalDifficulty = await this._node.getBlockTotalDifficulty(block);
+    }
 
     return getRpcBlock(block, totalDifficulty, includeTransactions);
   }

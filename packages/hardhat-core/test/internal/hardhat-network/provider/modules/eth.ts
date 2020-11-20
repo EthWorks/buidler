@@ -854,6 +854,29 @@ describe("Eth module", function () {
           assert.isEmpty(block.uncles);
         });
 
+        it("Should return the new pending block", async function () {
+          const firstBlockNumber = await getFirstBlock();
+          const firstBlock: RpcBlockOutput = await this.provider.send(
+            "eth_getBlockByNumber",
+            [numberToRpcQuantity(firstBlockNumber), false]
+          );
+
+          await this.provider.send("evm_setAutomineEnabled", [false]);
+          const txHash = await sendTxToZeroAddress(this.provider);
+
+          const block: RpcBlockOutput = await this.provider.send(
+            "eth_getBlockByNumber",
+            ["pending", false]
+          );
+
+          assertQuantity(block.number, firstBlockNumber + 1);
+          assert.equal(block.transactions.length, 1);
+          assert.equal(block.parentHash, firstBlock.hash);
+          assert.include(block.transactions as string[], txHash);
+          assert.equal(block.miner, bufferToHex(COINBASE_ADDRESS));
+          assert.isEmpty(block.uncles);
+        });
+
         it("should return the complete transactions if the second argument is true", async function () {
           const firstBlockNumber = await getFirstBlock();
           const firstBlock: RpcBlockOutput = await this.provider.send(
