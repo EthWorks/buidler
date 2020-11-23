@@ -51,12 +51,10 @@ import { ForkStateManager } from "./fork/ForkStateManager";
 import { HardhatBlockchain } from "./HardhatBlockchain";
 import {
   CallParams,
-  EstimateGasResult,
   FilterParams,
   GatherTracesResult,
   GenesisAccount,
   NodeConfig,
-  RunCallResult,
   RunTransactionResult,
   Snapshot,
   TracingConfig,
