@@ -306,7 +306,7 @@ export class EthModule {
     rpcCall: RpcCallRequest,
     blockTag: OptionalBlockTag
   ): Promise<string> {
-    const blockNumber = await this._blockTagToBlockNumber(blockTag);
+    const blockNumberOrPending = await this._resolveBlockTag(blockTag);
 
     const callParams = await this._rpcCallRequestToNodeCallParams(rpcCall);
     const {
@@ -314,7 +314,7 @@ export class EthModule {
       trace,
       error,
       consoleLogMessages,
-    } = await this._node.runCall(callParams, blockNumber);
+    } = await this._node.runCall(callParams, blockNumberOrPending);
 
     await this._logCallTrace(callParams, trace);
 
@@ -376,7 +376,7 @@ export class EthModule {
     transactionRequest: RpcTransactionRequest,
     blockTag: OptionalBlockTag
   ): Promise<string> {
-    const blockNumber = await this._blockTagToBlockNumber(blockTag);
+    const blockNumberOrPending = await this._resolveBlockTag(blockTag);
 
     const txParams = await this._rpcTransactionRequestToNodeTransactionParams(
       transactionRequest
@@ -387,7 +387,7 @@ export class EthModule {
       error,
       trace,
       consoleLogMessages,
-    } = await this._node.estimateGas(txParams, blockNumber);
+    } = await this._node.estimateGas(txParams, blockNumberOrPending);
 
     if (error !== undefined) {
       await this._logEstimateGasTrace(txParams, trace);
@@ -419,10 +419,10 @@ export class EthModule {
     address: Buffer,
     blockTag: OptionalBlockTag
   ): Promise<string> {
-    const blockNumber = await this._blockTagToBlockNumber(blockTag);
+    const blockNumberOrPending = await this._resolveBlockTag(blockTag);
 
     return numberToRpcQuantity(
-      await this._node.getAccountBalance(address, blockNumber)
+      await this._node.getAccountBalance(address, blockNumberOrPending)
     );
   }
 
@@ -516,11 +516,11 @@ export class EthModule {
   private async _getBlockTransactionCountByNumberAction(
     blockTag: BlockTag
   ): Promise<string | null> {
-    let blockNumber: BN | "pending";
+    let blockNumberOrPending: BN | "pending";
     let block: Block | undefined;
 
     try {
-      blockNumber = await this._blockTagToBlockNumber(blockTag);
+      blockNumberOrPending = await this._resolveBlockTag(blockTag);
     } catch (error) {
       if (error.message.includes("Received invalid block number")) {
         return null;
@@ -529,10 +529,10 @@ export class EthModule {
       throw error;
     }
 
-    if (blockNumber === "pending") {
+    if (blockNumberOrPending === "pending") {
       block = await this._node.getPendingBlock();
     } else {
-      block = await this._node.getBlockByNumber(blockNumber);
+      block = await this._node.getBlockByNumber(blockNumberOrPending);
       if (block === undefined) {
         return null;
       }
@@ -551,9 +551,11 @@ export class EthModule {
     address: Buffer,
     blockTag: OptionalBlockTag
   ): Promise<string> {
-    const blockNumber = await this._blockTagToBlockNumber(blockTag);
+    const blockNumberOrPending = await this._resolveBlockTag(blockTag);
 
-    return bufferToRpcData(await this._node.getCode(address, blockNumber));
+    return bufferToRpcData(
+      await this._node.getCode(address, blockNumberOrPending)
+    );
   }
 
   // eth_getCompilers
@@ -645,9 +647,13 @@ export class EthModule {
     slot: BN,
     blockTag: OptionalBlockTag
   ): Promise<string> {
-    const blockNumber = await this._blockTagToBlockNumber(blockTag);
+    const blockNumberOrPending = await this._resolveBlockTag(blockTag);
 
-    const data = await this._node.getStorageAt(address, slot, blockNumber);
+    const data = await this._node.getStorageAt(
+      address,
+      slot,
+      blockNumberOrPending
+    );
 
     return bufferToRpcData(data);
   }
@@ -691,11 +697,11 @@ export class EthModule {
     index: BN
   ): Promise<RpcTransactionOutput | null> {
     const i = index.toNumber();
-    let blockNumber: BN | "pending";
+    let blockNumberOrPending: BN | "pending";
     let block: Block | undefined;
 
     try {
-      blockNumber = await this._blockTagToBlockNumber(blockTag);
+      blockNumberOrPending = await this._resolveBlockTag(blockTag);
     } catch (error) {
       if (error.message.includes("Received invalid block number")) {
         return null;
@@ -704,10 +710,10 @@ export class EthModule {
       throw error;
     }
 
-    if (blockNumber === "pending") {
+    if (blockNumberOrPending === "pending") {
       block = await this._node.getPendingBlock();
     } else {
-      block = await this._node.getBlockByNumber(blockNumber);
+      block = await this._node.getBlockByNumber(blockNumberOrPending);
       if (block === undefined) {
         return null;
       }
@@ -787,10 +793,10 @@ export class EthModule {
       );
     }
 
-    const blockNumber = await this._blockTagToBlockNumber(blockTag);
+    const blockNumberOrPending = await this._resolveBlockTag(blockTag);
 
     return numberToRpcQuantity(
-      await this._node.getAccountNonce(address, blockNumber)
+      await this._node.getAccountNonce(address, blockNumberOrPending)
     );
   }
 
@@ -1074,7 +1080,7 @@ export class EthModule {
     };
   }
 
-  private async _blockTagToBlockNumber(
+  private async _resolveBlockTag(
     blockTag: OptionalBlockTag
   ): Promise<BN | "pending"> {
     if (blockTag === "pending") {
