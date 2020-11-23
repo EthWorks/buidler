@@ -1064,15 +1064,15 @@ describe("Eth module", function () {
 
         it("Should return the deployed code in the context of a new block with 'pending' block tag param", async function () {
           const snapshotId = await this.provider.send("evm_snapshot");
-          const contractAddressBefore = await deployContract(
+          const contractAddress = await deployContract(
             this.provider,
             `0x${EXAMPLE_CONTRACT.bytecode.object}`
           );
 
-          assert.isNotNull(contractAddressBefore);
+          assert.isNotNull(contractAddress);
 
           const contractCodeBefore = await this.provider.send("eth_getCode", [
-            contractAddressBefore,
+            contractAddress,
             "latest",
           ]);
 
@@ -1086,16 +1086,16 @@ describe("Eth module", function () {
               gas: numberToRpcQuantity(DEFAULT_BLOCK_GAS_LIMIT),
             },
           ]);
-          const contractAddressAfter = await this.provider.send(
+          const txReceipt = await this.provider.send(
             "eth_getTransactionReceipt",
             [txHash]
           );
           const contractCodeAfter = await this.provider.send("eth_getCode", [
-            contractAddressBefore,
+            contractAddress,
             "pending",
           ]);
 
-          assert.isNull(contractAddressAfter);
+          assert.isNull(txReceipt);
           assert.strictEqual(contractCodeAfter, contractCodeBefore);
         });
 
@@ -1895,7 +1895,7 @@ describe("Eth module", function () {
 
               it("Should return a 32-byte DATA string in the context of a new block with 'pending' block tag param", async function () {
                 const snapshotId = await this.provider.send("evm_snapshot");
-                const contractAddressBefore = await deployContract(
+                const contractAddress = await deployContract(
                   this.provider,
                   `0x${EXAMPLE_CONTRACT.bytecode.object}`
                 );
@@ -1910,17 +1910,17 @@ describe("Eth module", function () {
                     gas: numberToRpcQuantity(DEFAULT_BLOCK_GAS_LIMIT),
                   },
                 ]);
-                const contractAddressAfter = await this.provider.send(
+                const txReceipt = await this.provider.send(
                   "eth_getTransactionReceipt",
                   [txHash]
                 );
 
-                assert.isNotNull(contractAddressBefore);
-                assert.isNull(contractAddressAfter);
+                assert.isNotNull(contractAddress);
+                assert.isNull(txReceipt);
 
                 assert.strictEqual(
                   await this.provider.send("eth_getStorageAt", [
-                    contractAddressBefore,
+                    contractAddress,
                     numberToRpcQuantity(2),
                   ]),
                   "0x0000000000000000000000000000000000000000000000000000000000000000"
@@ -1928,7 +1928,7 @@ describe("Eth module", function () {
 
                 assert.strictEqual(
                   await this.provider.send("eth_getStorageAt", [
-                    contractAddressBefore,
+                    contractAddress,
                     numberToRpcQuantity(2),
                     "pending",
                   ]),
