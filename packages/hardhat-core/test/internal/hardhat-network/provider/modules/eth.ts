@@ -1891,6 +1891,15 @@ describe("Eth module", function () {
                   ]),
                   "0x1234567890123456789012345678901234567890123456789012345678901234"
                 );
+
+                assert.strictEqual(
+                  await this.provider.send("eth_getStorageAt", [
+                    exampleContract,
+                    numberToRpcQuantity(2),
+                    "latest",
+                  ]),
+                  "0x1234567890123456789012345678901234567890123456789012345678901234"
+                );
               });
 
               it("Should return a 32-byte DATA string in the context of a new block with 'pending' block tag param", async function () {
@@ -1931,32 +1940,6 @@ describe("Eth module", function () {
                     contractAddress,
                     numberToRpcQuantity(2),
                     "pending",
-                  ]),
-                  "0x1234567890123456789012345678901234567890123456789012345678901234"
-                );
-              });
-
-              it("Should return a 32-byte DATA string in the context of the latest block with 'latest' block tag param", async function () {
-                const firstBlock = await getFirstBlock();
-                const exampleContract = await deployContract(
-                  this.provider,
-                  `0x${EXAMPLE_CONTRACT.bytecode.object}`
-                );
-
-                assert.strictEqual(
-                  await this.provider.send("eth_getStorageAt", [
-                    exampleContract,
-                    numberToRpcQuantity(2),
-                    numberToRpcQuantity(firstBlock),
-                  ]),
-                  "0x0000000000000000000000000000000000000000000000000000000000000000"
-                );
-
-                assert.strictEqual(
-                  await this.provider.send("eth_getStorageAt", [
-                    exampleContract,
-                    numberToRpcQuantity(2),
-                    "latest",
                   ]),
                   "0x1234567890123456789012345678901234567890123456789012345678901234"
                 );
