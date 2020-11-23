@@ -587,8 +587,6 @@ describe("Eth module", function () {
         it("Should return the pending balance", async function () {
           await this.provider.send("evm_setAutomineEnabled", [false]);
 
-          await assertNodeBalances(this.provider, DEFAULT_ACCOUNTS_BALANCES);
-
           await this.provider.send("eth_sendTransaction", [
             {
               from: DEFAULT_ACCOUNTS_ADDRESSES[0],
