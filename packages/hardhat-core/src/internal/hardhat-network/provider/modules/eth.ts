@@ -511,20 +511,20 @@ export class EthModule {
   private async _getBlockTransactionCountByNumberAction(
     blockTag: BlockTag
   ): Promise<string | null> {
-    let blockNumber: BN | null;
+    let blockNumber: BN | "pending";
     let block: Block | undefined;
 
     try {
       blockNumber = await this._blockTagToBlockNumber(blockTag);
-    } catch (err) {
-      if (err instanceof InvalidInputError) {
+    } catch (error) {
+      if (error.message.includes("Received invalid block number")) {
         return null;
       }
 
-      throw err;
+      throw error;
     }
 
-    if (blockNumber === null) {
+    if (blockNumber === "pending") {
       block = await this._node.getPendingBlock();
     } else {
       block = await this._node.getBlockByNumber(blockNumber);
@@ -686,20 +686,20 @@ export class EthModule {
     index: BN
   ): Promise<RpcTransactionOutput | null> {
     const i = index.toNumber();
-    let blockNumber: BN | null;
+    let blockNumber: BN | "pending";
     let block: Block | undefined;
 
     try {
       blockNumber = await this._blockTagToBlockNumber(blockTag);
-    } catch (err) {
-      if (err instanceof InvalidInputError) {
+    } catch (error) {
+      if (error.message.includes("Received invalid block number")) {
         return null;
       }
 
-      throw err;
+      throw error;
     }
 
-    if (blockNumber === null) {
+    if (blockNumber === "pending") {
       block = await this._node.getPendingBlock();
     } else {
       block = await this._node.getBlockByNumber(blockNumber);
@@ -1061,15 +1061,15 @@ export class EthModule {
       nonce:
         rpcTx.nonce !== undefined
           ? rpcTx.nonce
-          : await this._node.getAccountNonce(rpcTx.from, null),
+          : await this._node.getAccountNonce(rpcTx.from, "pending"),
     };
   }
 
   private async _blockTagToBlockNumber(
     blockTag: OptionalBlockTag
-  ): Promise<BN | null> {
+  ): Promise<BN | "pending"> {
     if (blockTag === "pending") {
-      return null;
+      return "pending";
     }
 
     if (blockTag === undefined || blockTag === "latest") {
@@ -1256,7 +1256,7 @@ export class EthModule {
       return;
     }
 
-    const code = await this._node.getCode(trace.address, null);
+    const code = await this._node.getCode(trace.address, "pending");
     if (code.length === 0) {
       if (shouldBeContract) {
         this._logger.log(`WARNING: Calling an account which is not a contract`);

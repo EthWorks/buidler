@@ -298,11 +298,16 @@ export class HardhatNode extends EventEmitter {
 
   public async runCall(
     call: CallParams,
-    blockNumber: BN | null
-  ): Promise<RunCallResult> {
+    blockNumber: BN | "pending"
+  ): Promise<{
+    result: Buffer;
+    trace: MessageTrace | undefined;
+    error?: Error;
+    consoleLogMessages: string[];
+  }> {
     const tx = await this._getFakeTransaction({
       ...call,
-      nonce: await this.getAccountNonce(call.from, null),
+      nonce: await this.getAccountNonce(call.from, "pending"),
     });
 
     const result = await this._runInBlockContext(blockNumber, () =>
@@ -319,7 +324,7 @@ export class HardhatNode extends EventEmitter {
 
   public async getAccountBalance(
     address: Buffer,
-    blockNumber: BN | null
+    blockNumber: BN | "pending"
   ): Promise<BN> {
     const account = await this._runInBlockContext(blockNumber, () =>
       this._stateManager.getAccount(address)
@@ -330,7 +335,7 @@ export class HardhatNode extends EventEmitter {
 
   public async getAccountNonce(
     address: Buffer,
-    blockNumber: BN | null
+    blockNumber: BN | "pending"
   ): Promise<BN> {
     const account = await this._runInBlockContext(blockNumber, () =>
       this._stateManager.getAccount(address)
@@ -359,7 +364,7 @@ export class HardhatNode extends EventEmitter {
   }
 
   public async getPendingBlock(): Promise<Block> {
-    const result = await this._runInBlockContext(null, () =>
+    const result = await this._runInBlockContext("pending", () =>
       this._blockchain.getLatestBlock()
     );
 
@@ -368,7 +373,7 @@ export class HardhatNode extends EventEmitter {
 
   public async getPendingBlockAndTotalDifficulty(): Promise<[Block, BN]> {
     const result: [Block, BN] = await this._runInBlockContext(
-      null,
+      "pending",
       async () => {
         const block = await this._blockchain.getLatestBlock();
         const totalDifficulty = await this._blockchain.getTotalDifficulty(
@@ -392,8 +397,13 @@ export class HardhatNode extends EventEmitter {
 
   public async estimateGas(
     txParams: TransactionParams,
-    blockNumber: BN | null
-  ): Promise<EstimateGasResult> {
+    blockNumber: BN | "pending"
+  ): Promise<{
+    estimation: BN;
+    trace: MessageTrace | undefined;
+    error?: Error;
+    consoleLogMessages: string[];
+  }> {
     const tx = await this._getFakeTransaction({
       ...txParams,
       gasLimit: this.getBlockGasLimit(),
@@ -454,7 +464,7 @@ export class HardhatNode extends EventEmitter {
   public async getStorageAt(
     address: Buffer,
     slot: BN,
-    blockNumber: BN | null
+    blockNumber: BN | "pending"
   ): Promise<Buffer> {
     const key = slot.toArrayLike(Buffer, "be", 32);
 
@@ -493,7 +503,7 @@ export class HardhatNode extends EventEmitter {
 
   public async getCode(
     address: Buffer,
-    blockNumber: BN | null
+    blockNumber: BN | "pending"
   ): Promise<Buffer> {
     return this._runInBlockContext(blockNumber, () =>
       this._stateManager.getContractCode(address)
@@ -1259,10 +1269,10 @@ export class HardhatNode extends EventEmitter {
   }
 
   private async _runInBlockContext<T>(
-    blockNumber: BN | null,
+    blockNumber: BN | "pending",
     action: () => Promise<T>
   ): Promise<T> {
-    if (blockNumber === null) {
+    if (blockNumber === "pending") {
       const snapshotId = await this.takeSnapshot();
       await this.mineBlock(false);
       const result = await action();
