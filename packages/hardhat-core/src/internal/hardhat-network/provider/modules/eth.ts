@@ -718,7 +718,11 @@ export class EthModule {
       return null;
     }
 
-    return getRpcTransaction(tx, block, i);
+    return getRpcTransaction(
+      tx,
+      blockTag === "pending" ? "pending" : block,
+      blockTag === "pending" ? undefined : i
+    );
   }
 
   // eth_getTransactionByHash
@@ -732,7 +736,7 @@ export class EthModule {
   ): Promise<RpcTransactionOutput | null> {
     const pendingTx = await this._node.getPendingTransaction(hash);
     if (pendingTx !== undefined) {
-      return getRpcTransaction(pendingTx);
+      return getRpcTransaction(pendingTx, "pending");
     }
 
     const block = await this._node.getBlockByTransactionHash(hash);
@@ -878,7 +882,7 @@ export class EthModule {
 
   private async _pendingTransactionsAction(): Promise<RpcTransactionOutput[]> {
     const txs = await this._node.getPendingTransactions();
-    return txs.map((tx) => getRpcTransaction(tx));
+    return txs.map((tx) => getRpcTransaction(tx, "pending"));
   }
 
   // eth_protocolVersion

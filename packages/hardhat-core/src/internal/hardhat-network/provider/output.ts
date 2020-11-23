@@ -130,20 +130,20 @@ export function getRpcBlock(
 
 export function getRpcTransaction(
   tx: Transaction,
-  block?: Block,
+  block: Block | "pending",
   index?: number
 ): RpcTransactionOutput;
 
 export function getRpcTransaction(
   tx: Transaction,
-  block?: Block,
+  block: Block | "pending",
   index?: number,
   txHashOnly?: boolean
 ): string | RpcTransactionOutput;
 
 export function getRpcTransaction(
   tx: Transaction,
-  block?: Block,
+  block: Block | "pending",
   index?: number,
   txHashOnly = false
 ): string | RpcTransactionOutput {
@@ -152,11 +152,11 @@ export function getRpcTransaction(
   }
 
   return {
-    blockHash: block !== undefined ? bufferToRpcData(block.hash()) : null,
+    blockHash: block === "pending" ? null : bufferToRpcData(block.hash()),
     blockNumber:
-      block !== undefined
-        ? numberToRpcQuantity(new BN(block.header.number))
-        : null,
+      block === "pending"
+        ? null
+        : numberToRpcQuantity(new BN(block.header.number)),
     from: bufferToRpcData(tx.getSenderAddress()),
     gas: numberToRpcQuantity(new BN(tx.gasLimit)),
     gasPrice: numberToRpcQuantity(new BN(tx.gasPrice)),
