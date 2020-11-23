@@ -2373,7 +2373,6 @@ describe("Eth module", function () {
         });
 
         it("should return the right info for the existing transaction in the context of a new block with 'pending' block tag param", async function () {
-          const firstBlock = await getFirstBlock();
           const txParams1: TransactionParams = {
             to: toBuffer(zeroAddress()),
             from: toBuffer(DEFAULT_ACCOUNTS_ADDRESSES[0]),
@@ -2391,24 +2390,12 @@ describe("Eth module", function () {
             txParams1
           );
 
-          const block = await this.provider.send("eth_getBlockByNumber", [
-            "pending",
-            false,
-          ]);
-
           const tx: RpcTransactionOutput = await this.provider.send(
             "eth_getTransactionByBlockNumberAndIndex",
             ["pending", numberToRpcQuantity(0)]
           );
 
-          assertTransaction(
-            tx,
-            txHash,
-            txParams1,
-            firstBlock + 1,
-            block.hash,
-            0
-          );
+          assertTransaction(tx, txHash, txParams1);
 
           await this.provider.send("evm_mine");
 
@@ -2427,24 +2414,12 @@ describe("Eth module", function () {
             txParams2
           );
 
-          const block2 = await this.provider.send("eth_getBlockByNumber", [
-            "pending",
-            false,
-          ]);
-
           const tx2: RpcTransactionOutput = await this.provider.send(
             "eth_getTransactionByBlockNumberAndIndex",
             ["pending", numberToRpcQuantity(0)]
           );
 
-          assertTransaction(
-            tx2,
-            txHash2,
-            txParams2,
-            firstBlock + 2,
-            block2.hash,
-            0
-          );
+          assertTransaction(tx2, txHash2, txParams2);
         });
       });
 
