@@ -1017,7 +1017,7 @@ describe("Eth module", function () {
           );
         });
 
-        it("Should return 1 for others", async function () {
+        it("Should return the number of transactions in the block", async function () {
           const firstBlock = await getFirstBlock();
           await sendTxToZeroAddress(this.provider);
 
@@ -1029,7 +1029,7 @@ describe("Eth module", function () {
           );
         });
 
-        it("Should return 1 for a pending block", async function () {
+        it("Should return the number of transactions in the 'pending' block", async function () {
           await this.provider.send("evm_setAutomineEnabled", [false]);
           await sendTxToZeroAddress(this.provider);
 
@@ -2371,7 +2371,7 @@ describe("Eth module", function () {
           );
         });
 
-        it("should return the right info for the existing transaction in the context of a new block with 'pending' block tag param", async function () {
+        it("should return the right transaction info when called with 'pending' block tag param", async function () {
           const txParams1: TransactionParams = {
             to: toBuffer(zeroAddress()),
             from: toBuffer(DEFAULT_ACCOUNTS_ADDRESSES[0]),
