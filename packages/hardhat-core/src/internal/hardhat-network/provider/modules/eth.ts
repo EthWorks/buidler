@@ -724,11 +724,9 @@ export class EthModule {
       return null;
     }
 
-    return getRpcTransaction(
-      tx,
-      blockTag === "pending" ? "pending" : block,
-      blockTag === "pending" ? undefined : i
-    );
+    return blockTag === "pending"
+      ? getRpcTransaction(tx, "pending")
+      : getRpcTransaction(tx, block, i);
   }
 
   // eth_getTransactionByHash

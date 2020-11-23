@@ -101,6 +101,10 @@ export function getRpcBlock(
   includeTransactions = true,
   pending = false
 ): RpcBlockOutput {
+  const transactions = includeTransactions
+    ? block.transactions.map((tx, index) => getRpcTransaction(tx, block, index))
+    : block.transactions.map((tx) => bufferToRpcData(tx.hash(true)));
+
   return {
     number: pending ? null : numberToRpcQuantity(new BN(block.header.number)),
     hash: pending ? null : bufferToRpcData(block.hash()),
@@ -121,36 +125,27 @@ export function getRpcBlock(
     gasLimit: numberToRpcQuantity(new BN(block.header.gasLimit)),
     gasUsed: numberToRpcQuantity(new BN(block.header.gasUsed)),
     timestamp: numberToRpcQuantity(new BN(block.header.timestamp)),
-    transactions: block.transactions.map((tx: any, index: number) =>
-      getRpcTransaction(tx, block, index, !includeTransactions)
-    ) as string[] | RpcTransactionOutput[],
+    transactions,
     uncles: block.uncleHeaders.map((uh: any) => bufferToRpcData(uh.hash())),
   };
 }
 
 export function getRpcTransaction(
   tx: Transaction,
-  block: Block | "pending",
-  index?: number
+  block: Block,
+  index: number
+): RpcTransactionOutput;
+
+export function getRpcTransaction(
+  tx: Transaction,
+  block: "pending"
 ): RpcTransactionOutput;
 
 export function getRpcTransaction(
   tx: Transaction,
   block: Block | "pending",
-  index?: number,
-  txHashOnly?: boolean
-): string | RpcTransactionOutput;
-
-export function getRpcTransaction(
-  tx: Transaction,
-  block: Block | "pending",
-  index?: number,
-  txHashOnly = false
-): string | RpcTransactionOutput {
-  if (txHashOnly) {
-    return bufferToRpcData(tx.hash(true));
-  }
-
+  index?: number
+): RpcTransactionOutput {
   return {
     blockHash: block === "pending" ? null : bufferToRpcData(block.hash()),
     blockNumber:
