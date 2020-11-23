@@ -869,7 +869,6 @@ describe("Eth module", function () {
             ["pending", false]
           );
 
-          assertQuantity(block.number, firstBlockNumber + 1);
           assert.equal(block.transactions.length, 1);
           assert.equal(block.parentHash, firstBlock.hash);
           assert.include(block.transactions as string[], txHash);
