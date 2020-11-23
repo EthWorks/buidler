@@ -2396,11 +2396,13 @@ describe("Eth module", function () {
 
           await this.provider.send("evm_mine");
 
+          await sendTxToZeroAddress(this.provider);
+
           const txParams2: TransactionParams = {
             to: toBuffer(zeroAddress()),
             from: toBuffer(DEFAULT_ACCOUNTS_ADDRESSES[0]),
             data: toBuffer([]),
-            nonce: new BN(1),
+            nonce: new BN(2),
             value: new BN(123),
             gasLimit: new BN(80000),
             gasPrice: new BN(239),
@@ -2413,32 +2415,11 @@ describe("Eth module", function () {
 
           const tx2: RpcTransactionOutput = await this.provider.send(
             "eth_getTransactionByBlockNumberAndIndex",
-            ["pending", numberToRpcQuantity(0)]
-          );
-
-          const txParams3: TransactionParams = {
-            to: toBuffer(zeroAddress()),
-            from: toBuffer(DEFAULT_ACCOUNTS_ADDRESSES[0]),
-            data: toBuffer([]),
-            nonce: new BN(2),
-            value: new BN(424),
-            gasLimit: new BN(75000),
-            gasPrice: new BN(311),
-          };
-
-          const txHash3 = await sendTransactionFromTxParams(
-            this.provider,
-            txParams3
-          );
-
-          const tx3: RpcTransactionOutput = await this.provider.send(
-            "eth_getTransactionByBlockNumberAndIndex",
             ["pending", numberToRpcQuantity(1)]
           );
 
           assertTransaction(tx, txHash, txParams1);
           assertTransaction(tx2, txHash2, txParams2);
-          assertTransaction(tx3, txHash3, txParams3);
         });
       });
 
