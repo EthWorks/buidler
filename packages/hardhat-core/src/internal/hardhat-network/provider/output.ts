@@ -98,17 +98,18 @@ export function bufferToRpcData(buffer: Buffer, pad: number = 0): string {
 export function getRpcBlock(
   block: Block,
   totalDifficulty: BN,
-  includeTransactions = true
+  includeTransactions = true,
+  pending = false
 ): RpcBlockOutput {
   return {
-    number: numberToRpcQuantity(new BN(block.header.number)), // TODO: null when it's a pending block,
-    hash: bufferToRpcData(block.hash()), // TODO: null when it's a pending block,
+    number: pending ? null : numberToRpcQuantity(new BN(block.header.number)),
+    hash: pending ? null : bufferToRpcData(block.hash()),
     parentHash: bufferToRpcData(block.header.parentHash),
     // We pad this to 8 bytes because of a limitation in The Graph
     // See: https://github.com/nomiclabs/hardhat/issues/491
-    nonce: bufferToRpcData(block.header.nonce, 16), // TODO: null when it's a pending block,
+    nonce: pending ? null : bufferToRpcData(block.header.nonce, 16),
     sha3Uncles: bufferToRpcData(block.header.uncleHash),
-    logsBloom: bufferToRpcData(block.header.bloom), // TODO: null when it's a pending block,
+    logsBloom: pending ? null : bufferToRpcData(block.header.bloom),
     transactionsRoot: bufferToRpcData(block.header.transactionsTrie),
     stateRoot: bufferToRpcData(block.header.stateRoot),
     receiptsRoot: bufferToRpcData(block.header.receiptTrie),

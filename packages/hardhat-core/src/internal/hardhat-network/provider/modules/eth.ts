@@ -482,7 +482,12 @@ export class EthModule {
       totalDifficulty = await this._node.getBlockTotalDifficulty(block);
     }
 
-    return getRpcBlock(block, totalDifficulty, includeTransactions);
+    return getRpcBlock(
+      block,
+      totalDifficulty,
+      includeTransactions,
+      tag === "pending"
+    );
   }
 
   // eth_getBlockTransactionCountByHash
