@@ -322,8 +322,12 @@ export class HardhatNode extends EventEmitter {
 
   public async getAccountBalance(
     address: Buffer,
-    blockNumber: BN | "pending"
+    blockNumber?: BN | "pending"
   ): Promise<BN> {
+    if (blockNumber === undefined) {
+      blockNumber = await this.getLatestBlockNumber();
+    }
+
     const account = await this._runInBlockContext(blockNumber, () =>
       this._stateManager.getAccount(address)
     );
