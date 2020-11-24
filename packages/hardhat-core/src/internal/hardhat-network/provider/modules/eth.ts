@@ -521,26 +521,10 @@ export class EthModule {
   private async _getBlockTransactionCountByNumberAction(
     blockTag: BlockTag
   ): Promise<string | null> {
-    let blockNumberOrPending: BlockNumberOrPending;
-    let block: Block | undefined;
+    const block = await this._getBlockByBlockTag(blockTag);
 
-    try {
-      blockNumberOrPending = await this._resolveBlockTag(blockTag);
-    } catch (error) {
-      if (error.message.includes("Received invalid block number")) {
-        return null;
-      }
-
-      throw error;
-    }
-
-    if (blockNumberOrPending === "pending") {
-      block = await this._node.getBlockByNumber("pending");
-    } else {
-      block = await this._node.getBlockByNumber(blockNumberOrPending);
-      if (block === undefined) {
-        return null;
-      }
+    if (block === null) {
+      return null;
     }
 
     return numberToRpcQuantity(block.transactions.length);
@@ -702,26 +686,10 @@ export class EthModule {
     index: BN
   ): Promise<RpcTransactionOutput | null> {
     const i = index.toNumber();
-    let blockNumberOrPending: BlockNumberOrPending;
-    let block: Block | undefined;
+    const block = await this._getBlockByBlockTag(blockTag);
 
-    try {
-      blockNumberOrPending = await this._resolveBlockTag(blockTag);
-    } catch (error) {
-      if (error.message.includes("Received invalid block number")) {
-        return null;
-      }
-
-      throw error;
-    }
-
-    if (blockNumberOrPending === "pending") {
-      block = await this._node.getBlockByNumber("pending");
-    } else {
-      block = await this._node.getBlockByNumber(blockNumberOrPending);
-      if (block === undefined) {
-        return null;
-      }
+    if (block === null) {
+      return null;
     }
 
     const tx = block.transactions[i];
@@ -1107,6 +1075,45 @@ export class EthModule {
     }
 
     return new BN(block.header.number);
+  }
+
+  private async _resolveBlockTagAndReturnNullIfInvalid(blockTag: BlockTag) {
+    let blockNumberOrPending: BlockNumberOrPending;
+    try {
+      blockNumberOrPending = await this._resolveBlockTag(blockTag);
+    } catch (error) {
+      if (error.message.includes("Received invalid block number")) {
+        return null;
+      }
+
+      throw error;
+    }
+
+    return blockNumberOrPending;
+  }
+
+  private async _getBlockByBlockTag(blockTag: BlockTag) {
+    let blockNumberOrPending: BlockNumberOrPending | null;
+    let block: Block | undefined;
+
+    blockNumberOrPending = await this._resolveBlockTagAndReturnNullIfInvalid(
+      blockTag
+    );
+
+    if (blockNumberOrPending === null) {
+      return null;
+    }
+
+    if (blockNumberOrPending === "pending") {
+      block = await this._node.getBlockByNumber("pending");
+    } else {
+      block = await this._node.getBlockByNumber(blockNumberOrPending);
+      if (block === undefined) {
+        return null;
+      }
+    }
+
+    return block;
   }
 
   private _extractBlock(blockTag: OptionalBlockTag): BN {
