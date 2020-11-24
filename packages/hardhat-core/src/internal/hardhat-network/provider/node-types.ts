@@ -104,3 +104,5 @@ export interface GatherTracesResult {
   error?: Error;
   consoleLogMessages: string[];
 }
+
+export type BlockNumberOrPending = BN | "pending";

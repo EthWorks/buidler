@@ -50,6 +50,7 @@ import { ForkBlockchain } from "./fork/ForkBlockchain";
 import { ForkStateManager } from "./fork/ForkStateManager";
 import { HardhatBlockchain } from "./HardhatBlockchain";
 import {
+  BlockNumberOrPending,
   CallParams,
   EstimateGasResult,
   FilterParams,
@@ -298,7 +299,7 @@ export class HardhatNode extends EventEmitter {
 
   public async runCall(
     call: CallParams,
-    blockNumber: BN | "pending"
+    blockNumber: BlockNumberOrPending
   ): Promise<RunCallResult> {
     const tx = await this._getFakeTransaction({
       ...call,
@@ -319,7 +320,7 @@ export class HardhatNode extends EventEmitter {
 
   public async getAccountBalance(
     address: Buffer,
-    blockNumber?: BN | "pending"
+    blockNumber?: BlockNumberOrPending
   ): Promise<BN> {
     if (blockNumber === undefined) {
       blockNumber = await this.getLatestBlockNumber();
@@ -334,7 +335,7 @@ export class HardhatNode extends EventEmitter {
 
   public async getAccountNonce(
     address: Buffer,
-    blockNumber: BN | "pending"
+    blockNumber: BlockNumberOrPending
   ): Promise<BN> {
     const account = await this._runInBlockContext(blockNumber, () =>
       this._stateManager.getAccount(address)
@@ -391,7 +392,7 @@ export class HardhatNode extends EventEmitter {
 
   public async estimateGas(
     txParams: TransactionParams,
-    blockNumber: BN | "pending"
+    blockNumber: BlockNumberOrPending
   ): Promise<EstimateGasResult> {
     const tx = await this._getFakeTransaction({
       ...txParams,
@@ -453,7 +454,7 @@ export class HardhatNode extends EventEmitter {
   public async getStorageAt(
     address: Buffer,
     slot: BN,
-    blockNumber: BN | "pending"
+    blockNumber: BlockNumberOrPending
   ): Promise<Buffer> {
     const key = slot.toArrayLike(Buffer, "be", 32);
 
@@ -492,7 +493,7 @@ export class HardhatNode extends EventEmitter {
 
   public async getCode(
     address: Buffer,
-    blockNumber: BN | "pending"
+    blockNumber: BlockNumberOrPending
   ): Promise<Buffer> {
     return this._runInBlockContext(blockNumber, () =>
       this._stateManager.getContractCode(address)
@@ -1258,7 +1259,7 @@ export class HardhatNode extends EventEmitter {
   }
 
   private async _runInBlockContext<T>(
-    blockNumber: BN | "pending",
+    blockNumber: BlockNumberOrPending,
     action: () => Promise<T>
   ): Promise<T> {
     if (blockNumber === "pending") {

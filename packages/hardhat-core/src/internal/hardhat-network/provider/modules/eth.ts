@@ -58,7 +58,12 @@ import {
   validateParams,
 } from "../input";
 import { HardhatNode } from "../node";
-import { CallParams, FilterParams, TransactionParams } from "../node-types";
+import {
+  BlockNumberOrPending,
+  CallParams,
+  FilterParams,
+  TransactionParams,
+} from "../node-types";
 import {
   bufferToRpcData,
   getRpcBlock,
@@ -516,7 +521,7 @@ export class EthModule {
   private async _getBlockTransactionCountByNumberAction(
     blockTag: BlockTag
   ): Promise<string | null> {
-    let blockNumberOrPending: BN | "pending";
+    let blockNumberOrPending: BlockNumberOrPending;
     let block: Block | undefined;
 
     try {
@@ -697,7 +702,7 @@ export class EthModule {
     index: BN
   ): Promise<RpcTransactionOutput | null> {
     const i = index.toNumber();
-    let blockNumberOrPending: BN | "pending";
+    let blockNumberOrPending: BlockNumberOrPending;
     let block: Block | undefined;
 
     try {
@@ -1080,7 +1085,7 @@ export class EthModule {
 
   private async _resolveBlockTag(
     blockTag: OptionalBlockTag
-  ): Promise<BN | "pending"> {
+  ): Promise<BlockNumberOrPending> {
     if (blockTag === "pending") {
       return "pending";
     }
