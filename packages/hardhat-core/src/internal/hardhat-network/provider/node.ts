@@ -363,14 +363,6 @@ export class HardhatNode extends EventEmitter {
     return new BN((await this.getLatestBlock()).header.number);
   }
 
-  public async getPendingBlock(): Promise<Block> {
-    const result = await this._runInBlockContext("pending", () =>
-      this._blockchain.getLatestBlock()
-    );
-
-    return result;
-  }
-
   public async getPendingBlockAndTotalDifficulty(): Promise<[Block, BN]> {
     return this._runInBlockContext("pending", async () => {
       const block = await this._blockchain.getLatestBlock();
@@ -473,7 +465,17 @@ export class HardhatNode extends EventEmitter {
     return data;
   }
 
-  public async getBlockByNumber(blockNumber: BN): Promise<Block | undefined> {
+  public async getBlockByNumber(blockNumber: "pending"): Promise<Block>;
+  public async getBlockByNumber(blockNumber: BN): Promise<Block | undefined>;
+  public async getBlockByNumber(
+    blockNumber: BlockNumberOrPending
+  ): Promise<Block | undefined> {
+    if (blockNumber === "pending") {
+      return this._runInPendingBlockContext(() =>
+        this._blockchain.getLatestBlock()
+      );
+    }
+
     return this._blockchain.getBlock(blockNumber);
   }
 

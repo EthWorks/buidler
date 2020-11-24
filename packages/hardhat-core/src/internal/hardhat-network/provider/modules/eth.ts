@@ -535,7 +535,7 @@ export class EthModule {
     }
 
     if (blockNumberOrPending === "pending") {
-      block = await this._node.getPendingBlock();
+      block = await this._node.getBlockByNumber("pending");
     } else {
       block = await this._node.getBlockByNumber(blockNumberOrPending);
       if (block === undefined) {
@@ -716,7 +716,7 @@ export class EthModule {
     }
 
     if (blockNumberOrPending === "pending") {
-      block = await this._node.getPendingBlock();
+      block = await this._node.getBlockByNumber("pending");
     } else {
       block = await this._node.getBlockByNumber(blockNumberOrPending);
       if (block === undefined) {
