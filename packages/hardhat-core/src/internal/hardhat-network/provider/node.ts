@@ -1263,12 +1263,7 @@ export class HardhatNode extends EventEmitter {
     action: () => Promise<T>
   ): Promise<T> {
     if (blockNumber === "pending") {
-      const snapshotId = await this.takeSnapshot();
-      await this.mineBlock(false);
-      const result = await action();
-      await this.revertToSnapshot(snapshotId);
-
-      return result;
+      return this._runInPendingBlockContext(action);
     }
 
     if (blockNumber.eq(await this.getLatestBlockNumber())) {
@@ -1290,6 +1285,21 @@ export class HardhatNode extends EventEmitter {
     } finally {
       await this._restoreBlockContext(currentStateRoot);
     }
+  }
+
+  private async _runInPendingBlockContext<T>(action: () => Promise<T>) {
+    const snapshotId = await this.takeSnapshot();
+    let result;
+    try {
+      await this.mineBlock(false);
+      result = await action();
+    } catch (err) {
+      throw err;
+    } finally {
+      await this.revertToSnapshot(snapshotId);
+    }
+
+    return result;
   }
 
   private async _setBlockContext(block: Block): Promise<void> {
