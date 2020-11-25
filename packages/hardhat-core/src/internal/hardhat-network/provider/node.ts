@@ -1291,15 +1291,12 @@ export class HardhatNode extends EventEmitter {
 
   private async _runInPendingBlockContext<T>(action: () => Promise<T>) {
     const snapshotId = await this.takeSnapshot();
-    let result;
     try {
       await this.mineBlock(false);
-      result = await action();
+      return await action();
     } finally {
       await this.revertToSnapshot(snapshotId);
     }
-
-    return result;
   }
 
   private async _setBlockContext(block: Block): Promise<void> {
