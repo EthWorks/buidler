@@ -375,7 +375,7 @@ describe("Eth module", function () {
           );
         });
 
-        it("should work with blockhashes calls", async function () {
+        it("Should work with blockhashes calls", async function () {
           const contractAddress = await deployContract(
             this.provider,
             `0x${EXAMPLE_BLOCKHASH_CONTRACT.bytecode.object}`
