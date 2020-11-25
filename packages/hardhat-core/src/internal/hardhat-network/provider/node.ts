@@ -465,8 +465,11 @@ export class HardhatNode extends EventEmitter {
     return data;
   }
 
-  public async getBlockByNumber(blockNumber: "pending"): Promise<Block>;
+  public async getBlockByNumber(pending: "pending"): Promise<Block>;
   public async getBlockByNumber(blockNumber: BN): Promise<Block | undefined>;
+  public async getBlockByNumber(
+    blockNumberOrPending: BN | "pending"
+  ): Promise<Block | undefined>;
   public async getBlockByNumber(
     blockNumberOrPending: BN | "pending"
   ): Promise<Block | undefined> {

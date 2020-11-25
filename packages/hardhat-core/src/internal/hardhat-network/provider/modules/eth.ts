@@ -1099,13 +1099,9 @@ export class EthModule {
       return null;
     }
 
-    if (blockNumberOrPending === "pending") {
-      block = await this._node.getBlockByNumber("pending");
-    } else {
-      block = await this._node.getBlockByNumber(blockNumberOrPending);
-      if (block === undefined) {
-        return null;
-      }
+    block = await this._node.getBlockByNumber(blockNumberOrPending);
+    if (block === undefined) {
+      return null;
     }
 
     return block;
