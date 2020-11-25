@@ -343,6 +343,10 @@ export class HardhatNode extends EventEmitter {
     return new BN(account.nonce);
   }
 
+  public async getAccountExecutableNonce(address: Buffer): Promise<BN> {
+    return this._txPool.getExecutableNonce(address);
+  }
+
   public async getAccountNonceInPreviousBlock(address: Buffer): Promise<BN> {
     const account = await this._stateManager.getAccount(address);
 
