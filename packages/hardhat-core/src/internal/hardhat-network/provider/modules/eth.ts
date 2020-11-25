@@ -58,12 +58,7 @@ import {
   validateParams,
 } from "../input";
 import { HardhatNode } from "../node";
-import {
-  BlockNumberOrPending,
-  CallParams,
-  FilterParams,
-  TransactionParams,
-} from "../node-types";
+import { CallParams, FilterParams, TransactionParams } from "../node-types";
 import {
   bufferToRpcData,
   getRpcBlock,
@@ -1053,7 +1048,7 @@ export class EthModule {
 
   private async _resolveBlockTag(
     blockTag: OptionalBlockTag
-  ): Promise<BlockNumberOrPending> {
+  ): Promise<BN | "pending"> {
     if (blockTag === "pending") {
       return "pending";
     }
@@ -1078,7 +1073,7 @@ export class EthModule {
   }
 
   private async _resolveBlockTagAndReturnNullIfInvalid(blockTag: BlockTag) {
-    let blockNumberOrPending: BlockNumberOrPending;
+    let blockNumberOrPending: BN | "pending";
     try {
       blockNumberOrPending = await this._resolveBlockTag(blockTag);
     } catch (error) {
@@ -1093,7 +1088,7 @@ export class EthModule {
   }
 
   private async _getBlockByBlockTag(blockTag: BlockTag) {
-    let blockNumberOrPending: BlockNumberOrPending | null;
+    let blockNumberOrPending: BN | "pending" | null;
     let block: Block | undefined;
 
     blockNumberOrPending = await this._resolveBlockTagAndReturnNullIfInvalid(

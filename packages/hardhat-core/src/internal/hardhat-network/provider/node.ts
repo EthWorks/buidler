@@ -50,7 +50,6 @@ import { ForkBlockchain } from "./fork/ForkBlockchain";
 import { ForkStateManager } from "./fork/ForkStateManager";
 import { HardhatBlockchain } from "./HardhatBlockchain";
 import {
-  BlockNumberOrPending,
   CallParams,
   EstimateGasResult,
   FilterParams,
@@ -299,14 +298,14 @@ export class HardhatNode extends EventEmitter {
 
   public async runCall(
     call: CallParams,
-    blockNumber: BlockNumberOrPending
+    blockNumberOrPending: BN | "pending"
   ): Promise<RunCallResult> {
     const tx = await this._getFakeTransaction({
       ...call,
       nonce: await this.getAccountNonce(call.from, "pending"),
     });
 
-    const result = await this._runInBlockContext(blockNumber, () =>
+    const result = await this._runInBlockContext(blockNumberOrPending, () =>
       this._runTxAndRevertMutations(tx, false)
     );
 
@@ -320,13 +319,13 @@ export class HardhatNode extends EventEmitter {
 
   public async getAccountBalance(
     address: Buffer,
-    blockNumber?: BlockNumberOrPending
+    blockNumberOrPending?: BN | "pending"
   ): Promise<BN> {
-    if (blockNumber === undefined) {
-      blockNumber = await this.getLatestBlockNumber();
+    if (blockNumberOrPending === undefined) {
+      blockNumberOrPending = await this.getLatestBlockNumber();
     }
 
-    const account = await this._runInBlockContext(blockNumber, () =>
+    const account = await this._runInBlockContext(blockNumberOrPending, () =>
       this._stateManager.getAccount(address)
     );
 
@@ -335,9 +334,9 @@ export class HardhatNode extends EventEmitter {
 
   public async getAccountNonce(
     address: Buffer,
-    blockNumber: BlockNumberOrPending
+    blockNumberOrPending: BN | "pending"
   ): Promise<BN> {
-    const account = await this._runInBlockContext(blockNumber, () =>
+    const account = await this._runInBlockContext(blockNumberOrPending, () =>
       this._stateManager.getAccount(address)
     );
 
@@ -384,14 +383,14 @@ export class HardhatNode extends EventEmitter {
 
   public async estimateGas(
     txParams: TransactionParams,
-    blockNumber: BlockNumberOrPending
+    blockNumberOrPending: BN | "pending"
   ): Promise<EstimateGasResult> {
     const tx = await this._getFakeTransaction({
       ...txParams,
       gasLimit: this.getBlockGasLimit(),
     });
 
-    const result = await this._runInBlockContext(blockNumber, () =>
+    const result = await this._runInBlockContext(blockNumberOrPending, () =>
       this._runTxAndRevertMutations(tx)
     );
 
@@ -446,12 +445,13 @@ export class HardhatNode extends EventEmitter {
   public async getStorageAt(
     address: Buffer,
     slot: BN,
-    blockNumber: BlockNumberOrPending
+    blockNumberOrPending: BN | "pending"
   ): Promise<Buffer> {
     const key = slot.toArrayLike(Buffer, "be", 32);
 
-    const data: Buffer = await this._runInBlockContext(blockNumber, () =>
-      this._stateManager.getContractStorage(address, key)
+    const data: Buffer = await this._runInBlockContext(
+      blockNumberOrPending,
+      () => this._stateManager.getContractStorage(address, key)
     );
 
     const EXPECTED_DATA_SIZE = 32;
@@ -468,15 +468,15 @@ export class HardhatNode extends EventEmitter {
   public async getBlockByNumber(blockNumber: "pending"): Promise<Block>;
   public async getBlockByNumber(blockNumber: BN): Promise<Block | undefined>;
   public async getBlockByNumber(
-    blockNumber: BlockNumberOrPending
+    blockNumberOrPending: BN | "pending"
   ): Promise<Block | undefined> {
-    if (blockNumber === "pending") {
+    if (blockNumberOrPending === "pending") {
       return this._runInPendingBlockContext(() =>
         this._blockchain.getLatestBlock()
       );
     }
 
-    return this._blockchain.getBlock(blockNumber);
+    return this._blockchain.getBlock(blockNumberOrPending);
   }
 
   public async getBlockByHash(blockHash: Buffer): Promise<Block | undefined> {
@@ -495,9 +495,9 @@ export class HardhatNode extends EventEmitter {
 
   public async getCode(
     address: Buffer,
-    blockNumber: BlockNumberOrPending
+    blockNumberOrPending: BN | "pending"
   ): Promise<Buffer> {
-    return this._runInBlockContext(blockNumber, () =>
+    return this._runInBlockContext(blockNumberOrPending, () =>
       this._stateManager.getContractCode(address)
     );
   }
@@ -1261,22 +1261,22 @@ export class HardhatNode extends EventEmitter {
   }
 
   private async _runInBlockContext<T>(
-    blockNumber: BlockNumberOrPending,
+    blockNumberOrPending: BN | "pending",
     action: () => Promise<T>
   ): Promise<T> {
-    if (blockNumber === "pending") {
+    if (blockNumberOrPending === "pending") {
       return this._runInPendingBlockContext(action);
     }
 
-    if (blockNumber.eq(await this.getLatestBlockNumber())) {
+    if (blockNumberOrPending.eq(await this.getLatestBlockNumber())) {
       return action();
     }
 
-    const block = await this.getBlockByNumber(blockNumber);
+    const block = await this.getBlockByNumber(blockNumberOrPending);
     if (block === undefined) {
       // TODO handle this better
       throw new Error(
-        `Block with number ${blockNumber} doesn't exist. This should never happen.`
+        `Block with number ${blockNumberOrPending} doesn't exist. This should never happen.`
       );
     }
 
