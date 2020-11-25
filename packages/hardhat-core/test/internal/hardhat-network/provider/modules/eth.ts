@@ -513,6 +513,46 @@ describe("Eth module", function () {
           assert.isTrue(new BN(toBuffer(result)).gt(new BN(toBuffer(result2))));
         });
 
+        it("should estimate the gas for a transaction in context of a pending block", async function () {
+          const contractAddress = await deployContract(
+            this.provider,
+            `0x${EXAMPLE_CONTRACT.bytecode.object}`
+          );
+
+          const newState =
+            "000000000000000000000000000000000000000000000000000000000000000a";
+
+          await this.provider.send("evm_setAutomineEnabled", [false]);
+
+          await this.provider.send("eth_sendTransaction", [
+            {
+              to: contractAddress,
+              from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+              data: EXAMPLE_CONTRACT.selectors.modifiesState + newState,
+            },
+          ]);
+
+          const result = await this.provider.send("eth_estimateGas", [
+            {
+              to: contractAddress,
+              from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+              data: EXAMPLE_CONTRACT.selectors.modifiesState + newState,
+            },
+            "latest",
+          ]);
+
+          const result2 = await this.provider.send("eth_estimateGas", [
+            {
+              to: contractAddress,
+              from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+              data: EXAMPLE_CONTRACT.selectors.modifiesState + newState,
+            },
+            "pending",
+          ]);
+
+          assert.isTrue(new BN(toBuffer(result)).gt(new BN(toBuffer(result2))));
+        });
+
         it("Should throw invalid input error if called in the context of a nonexistent block", async function () {
           const firstBlock = await getFirstBlock();
           const futureBlock = firstBlock + 1;
