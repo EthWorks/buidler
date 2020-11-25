@@ -1295,8 +1295,6 @@ export class HardhatNode extends EventEmitter {
     try {
       await this.mineBlock(false);
       result = await action();
-    } catch (err) {
-      throw err;
     } finally {
       await this.revertToSnapshot(snapshotId);
     }
