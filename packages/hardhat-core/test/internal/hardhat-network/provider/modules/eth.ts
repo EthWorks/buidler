@@ -271,34 +271,51 @@ describe("Eth module", function () {
         });
 
         it("Should be run in the context of a new block with 'pending' block tag param", async function () {
-          const firstBlock = await getFirstBlock();
+          const snapshotId = await this.provider.send("evm_snapshot");
           const contractAddress = await deployContract(
             this.provider,
-            `0x${EXAMPLE_READ_CONTRACT.bytecode.object}`
+            `0x${EXAMPLE_CONTRACT.bytecode.object}`
           );
 
-          const timestamp = getCurrentTimestamp() + 60;
-          await this.provider.send("evm_setNextBlockTimestamp", [timestamp]);
-
-          const blockResult = await this.provider.send("eth_call", [
+          await this.provider.send("evm_revert", [snapshotId]);
+          await this.provider.send("evm_setAutomineEnabled", [false]);
+          await this.provider.send("eth_sendTransaction", [
             {
-              to: contractAddress,
-              data: EXAMPLE_READ_CONTRACT.selectors.blockNumber,
+              from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+              data: `0x${EXAMPLE_CONTRACT.bytecode.object}`,
+              gas: numberToRpcQuantity(DEFAULT_BLOCK_GAS_LIMIT),
             },
+          ]);
+
+          const result = await this.provider.send("eth_call", [
+            { to: contractAddress, data: EXAMPLE_CONTRACT.selectors.i },
             "pending",
           ]);
 
-          assert.equal(dataToNumber(blockResult), firstBlock + 2);
+          assert.equal(
+            result,
+            "0x0000000000000000000000000000000000000000000000000000000000000000"
+          );
 
-          const timestampResult = await this.provider.send("eth_call", [
+          await this.provider.send("evm_mine");
+
+          await this.provider.send("eth_sendTransaction", [
             {
               to: contractAddress,
-              data: EXAMPLE_READ_CONTRACT.selectors.blockTimestamp,
+              from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+              data: `${EXAMPLE_CONTRACT.selectors.modifiesState}000000000000000000000000000000000000000000000000000000000000000a`,
             },
+          ]);
+
+          const result2 = await this.provider.send("eth_call", [
+            { to: contractAddress, data: EXAMPLE_CONTRACT.selectors.i },
             "pending",
           ]);
 
-          assert.equal(timestampResult, timestamp);
+          assert.equal(
+            result2,
+            "0x000000000000000000000000000000000000000000000000000000000000000a"
+          );
         });
 
         it("Should return an empty buffer if called an non-contract account", async function () {
