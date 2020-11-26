@@ -307,10 +307,7 @@ export class HardhatNode extends EventEmitter {
       async () => {
         const account = await this._stateManager.getAccount(call.from);
         const nonce = new BN(account.nonce);
-        tx = await this._getFakeTransaction({
-          ...call,
-          nonce,
-        });
+        tx = await this._getFakeTransaction({ ...call, nonce });
         return this._runTxAndRevertMutations(tx, false);
       }
     );
