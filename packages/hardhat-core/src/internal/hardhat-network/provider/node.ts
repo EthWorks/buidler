@@ -373,7 +373,7 @@ export class HardhatNode extends EventEmitter {
   }
 
   public async getPendingBlockAndTotalDifficulty(): Promise<[Block, BN]> {
-    return this._runInBlockContext("pending", async () => {
+    return this._runInPendingBlockContext(async () => {
       const block = await this._blockchain.getLatestBlock();
       const totalDifficulty = await this._blockchain.getTotalDifficulty(
         block.hash()
