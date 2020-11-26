@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import { zeroAddress } from "ethereumjs-util";
+import { BN, zeroAddress } from "ethereumjs-util";
 import sinon from "sinon";
 
 import {
@@ -273,6 +273,39 @@ describe("Evm module", function () {
             );
             assertQuantity(latestBlock2.timestamp, timestamp - 500);
           });
+        });
+      });
+
+      describe("evm_setBlockGasLimit", () => {
+        it("validates new block gas limit", async function () {
+          await assert.isRejected(
+            this.provider.send("evm_setBlockGasLimit", [
+              numberToRpcQuantity(0),
+            ]),
+            `New block gas limit must be greater than 0`
+          );
+        });
+
+        it("sets new block gas limit", async function () {
+          const blockBefore = await this.provider.send("eth_getBlockByNumber", [
+            "pending",
+            false,
+          ]);
+          const gasLimitBefore = quantityToBN(blockBefore.gasLimit);
+
+          const newBlockGasLimit = new BN(34228);
+          await this.provider.send("evm_setBlockGasLimit", [
+            numberToRpcQuantity(newBlockGasLimit),
+          ]);
+
+          const blockAfter = await this.provider.send("eth_getBlockByNumber", [
+            "pending",
+            false,
+          ]);
+          const gasLimitAfter = quantityToBN(blockAfter.gasLimit);
+
+          assert.isFalse(gasLimitBefore.eq(gasLimitAfter));
+          assert.isTrue(gasLimitAfter.eq(newBlockGasLimit));
         });
       });
 
