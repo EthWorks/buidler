@@ -570,7 +570,6 @@ describe("Evm module", function () {
             it("automine and interval mining don't interfere with each other", async function () {
               const interval = 5000;
               const initialBlock = await getBlockNumber();
-              const initialTimestamp = getCurrentTimestamp();
 
               await this.provider.send("evm_setAutomineEnabled", [false]);
               await this.provider.send("evm_setIntervalMining", [
