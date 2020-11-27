@@ -3142,6 +3142,46 @@ describe("Eth module", function () {
             );
           });
 
+          it("Should mine all blocks with pending transactions needed to mine given transaction", async function () {
+            const sendDummyTransaction = async (nonce: number) => {
+              return this.provider.send("eth_sendTransaction", [
+                {
+                  from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+                  to: DEFAULT_ACCOUNTS_ADDRESSES[1],
+                  nonce: numberToRpcQuantity(nonce),
+                },
+              ]);
+            };
+
+            await this.provider.send("evm_setAutomineEnabled", [false]);
+            await this.provider.send("evm_setBlockGasLimit", [
+              numberToRpcQuantity(45000),
+            ]);
+
+            const blockBefore = await this.provider.send(
+              "eth_getBlockByNumber",
+              ["latest", false]
+            );
+            const blockNumberBefore = quantityToNumber(blockBefore.number);
+
+            await sendDummyTransaction(0);
+            await sendDummyTransaction(1);
+            await sendDummyTransaction(2);
+            await sendDummyTransaction(3);
+            await this.provider.send("evm_setAutomineEnabled", [true]);
+            const txHash = await sendDummyTransaction(4);
+
+            const blockAfter = await this.provider.send(
+              "eth_getBlockByNumber",
+              ["latest", false]
+            );
+            const blockNumberAfter = quantityToNumber(blockAfter.number);
+
+            assert.equal(blockNumberAfter, blockNumberBefore + 3);
+            assert.lengthOf(blockAfter.transactions, 1);
+            assert.sameDeepMembers(blockAfter.transactions, [txHash]);
+          });
+
           it("Should throw if the tx nonce is higher than the account nonce", async function () {
             await assertInvalidInputError(
               this.provider,

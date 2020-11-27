@@ -274,7 +274,12 @@ export class HardhatNode extends EventEmitter {
     await this._notifyPendingTransaction(tx);
 
     if (this._automine) {
-      return this.mineBlock(true);
+      let result;
+      do {
+        result = await this.mineBlock(true);
+      } while ((await this.getTransactionReceipt(tx.hash())) === undefined);
+
+      return result;
     }
   }
 
