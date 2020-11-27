@@ -286,7 +286,7 @@ describe("Evm module", function () {
           );
         });
 
-        it("sets new block gas limit", async function () {
+        it("sets a new block gas limit", async function () {
           const blockBefore = await this.provider.send("eth_getBlockByNumber", [
             "pending",
             false,
