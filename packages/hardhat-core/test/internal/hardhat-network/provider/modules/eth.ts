@@ -3142,46 +3142,6 @@ describe("Eth module", function () {
             );
           });
 
-          it("Should mine all blocks with pending transactions needed to mine given transaction", async function () {
-            const sendDummyTransaction = async (nonce: number) => {
-              return this.provider.send("eth_sendTransaction", [
-                {
-                  from: DEFAULT_ACCOUNTS_ADDRESSES[0],
-                  to: DEFAULT_ACCOUNTS_ADDRESSES[1],
-                  nonce: numberToRpcQuantity(nonce),
-                },
-              ]);
-            };
-
-            await this.provider.send("evm_setAutomineEnabled", [false]);
-            await this.provider.send("evm_setBlockGasLimit", [
-              numberToRpcQuantity(45000),
-            ]);
-
-            const blockBefore = await this.provider.send(
-              "eth_getBlockByNumber",
-              ["latest", false]
-            );
-            const blockNumberBefore = quantityToNumber(blockBefore.number);
-
-            await sendDummyTransaction(0);
-            await sendDummyTransaction(1);
-            await sendDummyTransaction(2);
-            await sendDummyTransaction(3);
-            await this.provider.send("evm_setAutomineEnabled", [true]);
-            const txHash = await sendDummyTransaction(4);
-
-            const blockAfter = await this.provider.send(
-              "eth_getBlockByNumber",
-              ["latest", false]
-            );
-            const blockNumberAfter = quantityToNumber(blockAfter.number);
-
-            assert.equal(blockNumberAfter, blockNumberBefore + 3);
-            assert.lengthOf(blockAfter.transactions, 1);
-            assert.sameDeepMembers(blockAfter.transactions, [txHash]);
-          });
-
           it("Should throw if the tx nonce is higher than the account nonce", async function () {
             await assertInvalidInputError(
               this.provider,
@@ -3308,6 +3268,90 @@ describe("Eth module", function () {
               },
               "revert A"
             );
+          });
+
+          describe("when there were pending transactions in the mempool", () => {
+            it("Should mine all blocks with pending transactions needed to mine the sent transaction", async function () {
+              const sendDummyTransaction = async (nonce: number) => {
+                return this.provider.send("eth_sendTransaction", [
+                  {
+                    from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+                    to: DEFAULT_ACCOUNTS_ADDRESSES[1],
+                    nonce: numberToRpcQuantity(nonce),
+                  },
+                ]);
+              };
+
+              await this.provider.send("evm_setAutomineEnabled", [false]);
+              await this.provider.send("evm_setBlockGasLimit", [
+                numberToRpcQuantity(45000),
+              ]);
+
+              const blockBefore = await this.provider.send(
+                "eth_getBlockByNumber",
+                ["latest", false]
+              );
+              const blockNumberBefore = quantityToNumber(blockBefore.number);
+
+              await sendDummyTransaction(0);
+              await sendDummyTransaction(1);
+              await sendDummyTransaction(2);
+              await sendDummyTransaction(3);
+              await this.provider.send("evm_setAutomineEnabled", [true]);
+              const txHash = await sendDummyTransaction(4);
+
+              const blockAfter = await this.provider.send(
+                "eth_getBlockByNumber",
+                ["latest", false]
+              );
+              const blockNumberAfter = quantityToNumber(blockAfter.number);
+
+              assert.equal(blockNumberAfter, blockNumberBefore + 3);
+              assert.lengthOf(blockAfter.transactions, 1);
+              assert.sameDeepMembers(blockAfter.transactions, [txHash]);
+            });
+
+            xit("Should throw if sender has not enough balance to run the sent tx as a result of mining pending txs", async function () {
+              const firstBlock = await getFirstBlock();
+              const wholeAccountBalance = numberToRpcQuantity(
+                DEFAULT_ACCOUNTS_BALANCES[0].subn(21_000)
+              );
+              await this.provider.send("evm_setAutomineEnabled", [false]);
+              await this.provider.send("eth_sendTransaction", [
+                {
+                  from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+                  to: DEFAULT_ACCOUNTS_ADDRESSES[1],
+                  nonce: numberToRpcQuantity(0),
+                  gas: numberToRpcQuantity(21000),
+                  gasPrice: numberToRpcQuantity(1),
+                  value: wholeAccountBalance,
+                },
+              ]);
+              await this.provider.send("evm_setAutomineEnabled", [true]);
+
+              await assertInvalidInputError(
+                this.provider,
+                "eth_sendTransaction",
+                [
+                  {
+                    from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+                    to: DEFAULT_ACCOUNTS_ADDRESSES[1],
+                    gas: numberToRpcQuantity(21000),
+                    gasPrice: numberToRpcQuantity(1),
+                    value: wholeAccountBalance,
+                  },
+                ],
+                "sender doesn't have enough funds to send tx"
+              );
+              assert.equal(
+                quantityToNumber(await this.provider.send("eth_blockNumber")),
+                firstBlock
+              );
+              assert.lengthOf(
+                await this.provider.send("eth_pendingTransactions"),
+                1
+              );
+            });
           });
         });
 
