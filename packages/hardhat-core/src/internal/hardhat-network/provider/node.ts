@@ -267,29 +267,33 @@ export class HardhatNode extends EventEmitter {
   public async sendTransaction(
     tx: Transaction
   ): Promise<RunTransactionResult | undefined> {
-    if (this._automine) {
-      await this._validateExactNonce(tx);
+    if (!this._automine) {
+      await this._addPendingTransaction(tx);
+      return;
     }
-    await this._txPool.addTransaction(tx);
-    await this._notifyPendingTransaction(tx);
 
-    if (this._automine) {
-      let result;
-      do {
-        result = await this.mineBlock(undefined, tx);
-      } while ((await this.getTransactionReceipt(tx.hash())) === undefined);
-
-      return result;
+    await this._validateExactNonce(tx);
+    if (this._txPool.hasPendingTransactions()) {
+      return this._mineTransactionAndPending(tx);
     }
+    return this._mineTransaction(tx);
   }
 
-  // prettier-ignore
-  public async mineBlock(timestamp: BN | undefined, sentTransaction: Transaction): Promise<RunTransactionResult>;
+  public async mineBlock(
+    timestamp: BN | undefined,
+    sentTxHash: string
+  ): Promise<RunTransactionResult>;
   public async mineBlock(timestamp?: BN): Promise<void>;
-  // prettier-ignore
-  public async mineBlock(timestamp?: BN, sentTransaction?: Transaction): Promise<RunTransactionResult | void> {
-    const [block, blockResult] = await this._mineAndSaveBlock(timestamp);
-    if (sentTransaction !== undefined) {
+
+  public async mineBlock(
+    timestamp?: BN,
+    sentTxHash?: string
+  ): Promise<RunTransactionResult | void> {
+    const [block, blockResult] = await this._mineAndSaveBlock(
+      timestamp,
+      sentTxHash
+    );
+    if (sentTxHash !== undefined) {
       const traces = await this._gatherTraces(
         blockResult.results[0].execResult // TODO-Ethworks handle other transactions
       );
@@ -544,9 +548,10 @@ export class HardhatNode extends EventEmitter {
   }
 
   public async getTransactionReceipt(
-    hash: Buffer
+    hash: Buffer | string
   ): Promise<RpcReceiptOutput | undefined> {
-    return this._blockchain.getTransactionReceipt(hash);
+    const hashBuffer = hash instanceof Buffer ? hash : toBuffer(hash);
+    return this._blockchain.getTransactionReceipt(hashBuffer);
   }
 
   public async getPendingTransactions(): Promise<Transaction[]> {
@@ -808,6 +813,51 @@ export class HardhatNode extends EventEmitter {
     this._txPool.setBlockGasLimit(gasLimit);
   }
 
+  private async _addPendingTransaction(tx: Transaction): Promise<void> {
+    await this._txPool.addTransaction(tx);
+    await this._notifyPendingTransaction(tx);
+  }
+
+  private async _mineTransaction(
+    tx: Transaction
+  ): Promise<RunTransactionResult> {
+    await this._txPool.addTransaction(tx);
+    await this._notifyPendingTransaction(tx);
+    return this.mineBlock(undefined, bufferToHex(tx.hash()));
+  }
+
+  private async _mineTransactionAndPending(
+    tx: Transaction
+  ): Promise<RunTransactionResult> {
+    const txHash = bufferToHex(tx.hash());
+    const snapshotId = await this.takeSnapshot();
+    await this._txPool.addTransaction(tx);
+    await this._notifyPendingTransaction(tx);
+    try {
+      return await this._mineBlocksUntilTransactionIncluded(txHash);
+    } catch (err) {
+      await this.revertToSnapshot(snapshotId);
+      throw err;
+    }
+    // TODO-Ethworks optimise so that snapshot is removed
+  }
+
+  private async _mineBlocksUntilTransactionIncluded(
+    txHash: string
+  ): Promise<RunTransactionResult> {
+    let result;
+    let txReceipt;
+    do {
+      if (!this._txPool.hasPendingTransactions()) {
+        throw new Error("this should never happen"); // TODO-Ethworks use other error
+      }
+      result = await this.mineBlock(undefined, txHash);
+      txReceipt = await this.getTransactionReceipt(txHash);
+    } while (txReceipt === undefined);
+
+    return result;
+  }
+
   private async _gatherTraces(result: ExecResult): Promise<GatherTracesResult> {
     let vmTrace = this._vmTracer.getLastTopLevelMessageTrace();
     const vmTracerError = this._vmTracer.getLastError();
@@ -854,7 +904,8 @@ export class HardhatNode extends EventEmitter {
   }
 
   private async _mineAndSaveBlock(
-    timestamp?: BN
+    timestamp?: BN,
+    sentTxHash?: string
   ): Promise<[Block, RunBlockResult]> {
     const [
       blockTimestamp,
@@ -872,10 +923,16 @@ export class HardhatNode extends EventEmitter {
     let block: Block;
     let result: RunBlockResult;
     try {
-      [block, result] = await this._mineBlockWithPendingTxs(blockTimestamp);
-    } catch (error) {
+      [block, result] = await this._mineBlockWithPendingTxs(
+        blockTimestamp,
+        sentTxHash
+      );
+    } catch (err) {
       await this._stateManager.setStateRoot(previousRoot);
-      throw new TransactionExecutionError(error);
+      if (err?.message.includes("sender doesn't have enough funds")) {
+        throw new InvalidInputError(err.message);
+      }
+      throw new TransactionExecutionError(err);
     }
 
     await this._saveBlockAsSuccessfullyRun(block, result);
@@ -894,7 +951,8 @@ export class HardhatNode extends EventEmitter {
   }
 
   private async _mineBlockWithPendingTxs(
-    blockTimestamp: BN
+    blockTimestamp: BN,
+    sentTxHash?: string
   ): Promise<[Block, RunBlockResult]> {
     const block = await this._getNextBlockTemplate(blockTimestamp);
 
@@ -910,7 +968,10 @@ export class HardhatNode extends EventEmitter {
 
     let tx = txHeap.peek();
     while (gasLeft.gte(minTxFee) && tx !== undefined) {
-      const txResult = await this._runTx(tx, block, gasLeft);
+      const shouldThrow =
+        sentTxHash !== undefined && sentTxHash === bufferToHex(tx.hash());
+
+      const txResult = await this._runTx(tx, block, gasLeft, shouldThrow);
       if (txResult !== null) {
         bloom.or(txResult.bloom);
         results.push(txResult);
@@ -944,7 +1005,8 @@ export class HardhatNode extends EventEmitter {
   private async _runTx(
     tx: Transaction,
     block: Block,
-    gasLeft: BN
+    gasLeft: BN,
+    shouldThrow: boolean
   ): Promise<RunTxResult | null> {
     const preRunStateRoot = await this._stateManager.getStateRoot();
     try {
@@ -954,9 +1016,10 @@ export class HardhatNode extends EventEmitter {
         return null;
       }
       return result;
-    } catch (e) {
-      // TODO-Ethworks throw if automine enabled?
-      // TODO-Ethworks consider logging the error
+    } catch (err) {
+      if (shouldThrow) {
+        throw err;
+      }
       return null;
     }
   }

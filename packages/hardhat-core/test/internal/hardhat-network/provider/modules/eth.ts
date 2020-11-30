@@ -3311,7 +3311,7 @@ describe("Eth module", function () {
               assert.sameDeepMembers(blockAfter.transactions, [txHash]);
             });
 
-            xit("Should throw if sender has not enough balance to run the sent tx as a result of mining pending txs", async function () {
+            it("Should throw if sender has not enough balance to run the sent tx as a result of mining pending txs", async function () {
               const firstBlock = await getFirstBlock();
               const wholeAccountBalance = numberToRpcQuantity(
                 DEFAULT_ACCOUNTS_BALANCES[0].subn(21_000)
