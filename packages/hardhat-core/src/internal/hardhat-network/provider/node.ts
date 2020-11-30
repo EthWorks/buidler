@@ -276,7 +276,7 @@ export class HardhatNode extends EventEmitter {
     if (this._automine) {
       let result;
       do {
-        result = await this.mineBlock(true);
+        result = await this.mineBlock(undefined, tx);
       } while ((await this.getTransactionReceipt(tx.hash())) === undefined);
 
       return result;
@@ -284,12 +284,12 @@ export class HardhatNode extends EventEmitter {
   }
 
   // prettier-ignore
-  public async mineBlock(returnResult: true, timestamp?: BN): Promise<RunTransactionResult>;
-  public async mineBlock(returnResult?: false, timestamp?: BN): Promise<void>;
+  public async mineBlock(timestamp: BN | undefined, sentTransaction: Transaction): Promise<RunTransactionResult>;
+  public async mineBlock(timestamp?: BN): Promise<void>;
   // prettier-ignore
-  public async mineBlock(returnResult = false, timestamp?: BN): Promise<RunTransactionResult | void> {
+  public async mineBlock(timestamp?: BN, sentTransaction?: Transaction): Promise<RunTransactionResult | void> {
     const [block, blockResult] = await this._mineAndSaveBlock(timestamp);
-    if (returnResult) {
+    if (sentTransaction !== undefined) {
       const traces = await this._gatherTraces(
         blockResult.results[0].execResult // TODO-Ethworks handle other transactions
       );
@@ -1307,7 +1307,7 @@ export class HardhatNode extends EventEmitter {
   private async _runInPendingBlockContext<T>(action: () => Promise<T>) {
     const snapshotId = await this.takeSnapshot();
     try {
-      await this.mineBlock(false);
+      await this.mineBlock();
       return await action();
     } finally {
       await this.revertToSnapshot(snapshotId);
