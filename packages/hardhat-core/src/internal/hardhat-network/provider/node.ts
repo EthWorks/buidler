@@ -834,7 +834,7 @@ export class HardhatNode extends EventEmitter {
     await this._txPool.addTransaction(tx);
     await this._notifyPendingTransaction(tx);
     try {
-      return await this._mineBlocksUntilTransactionIncluded(txHash);
+      return await this._mineBlocksUntilTransactionIsIncluded(txHash);
     } catch (err) {
       await this.revertToSnapshot(snapshotId);
       throw err;
@@ -842,7 +842,7 @@ export class HardhatNode extends EventEmitter {
     // TODO-Ethworks optimise so that snapshot is removed
   }
 
-  private async _mineBlocksUntilTransactionIncluded(
+  private async _mineBlocksUntilTransactionIsIncluded(
     txHash: string
   ): Promise<RunTransactionResult> {
     let result;
