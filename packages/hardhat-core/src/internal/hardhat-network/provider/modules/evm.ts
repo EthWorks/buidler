@@ -185,7 +185,7 @@ export class EvmModule {
 
   private async _setBlockGasLimitAction(blockGasLimit: BN): Promise<true> {
     if (blockGasLimit.lte(new BN(0))) {
-      throw new InvalidInputError("New block gas limit must be greater than 0");
+      throw new InvalidInputError("Block gas limit must be greater than 0");
     }
 
     this._node.setBlockGasLimit(blockGasLimit);

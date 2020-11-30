@@ -13,6 +13,7 @@ import { useEnvironment } from "../../../../helpers/environment";
 import { useFixtureProject } from "../../../../helpers/project";
 import {
   assertInvalidArgumentsError,
+  assertInvalidInputError,
   assertLatestBlockNumber,
   assertQuantity,
 } from "../../helpers/assertions";
@@ -277,12 +278,12 @@ describe("Evm module", function () {
       });
 
       describe("evm_setBlockGasLimit", () => {
-        it("validates new block gas limit", async function () {
-          await assert.isRejected(
-            this.provider.send("evm_setBlockGasLimit", [
-              numberToRpcQuantity(0),
-            ]),
-            `New block gas limit must be greater than 0`
+        it("validates block gas limit", async function () {
+          await assertInvalidInputError(
+            this.provider,
+            "evm_setBlockGasLimit",
+            [numberToRpcQuantity(0)],
+            "Block gas limit must be greater than 0"
           );
         });
 
