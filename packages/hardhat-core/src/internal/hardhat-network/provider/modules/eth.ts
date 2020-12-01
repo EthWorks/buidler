@@ -1179,26 +1179,38 @@ export class EthModule {
     tx: Transaction,
     trace: MessageTrace | undefined,
     block: Block,
-    blockResult: RunBlockResult
+    blockResult: RunBlockResult,
+    indent = false
   ) {
     if (trace !== undefined) {
-      await this._logContractAndFunctionName(trace, false);
+      await this._logContractAndFunctionName(trace, false, indent);
     }
 
-    this._logger.logWithTitle("Transaction", bufferToHex(tx.hash(true)));
-    this._logFrom(tx.getSenderAddress());
-    this._logTo(tx.to, trace);
-    this._logValue(new BN(tx.value));
+    this._logger.logWithTitle(
+      "Transaction",
+      bufferToHex(tx.hash(true)),
+      indent
+    );
+    this._logFrom(tx.getSenderAddress(), indent);
+    this._logTo(tx.to, trace, indent);
+    this._logValue(new BN(tx.value), indent);
     this._logger.logWithTitle(
       "Gas used",
       `${new BN(blockResult.receipts[0].gasUsed).toString(10)} of ${new BN(
         tx.gasLimit
-      ).toString(10)}`
+      ).toString(10)}`,
+      indent
     );
-    this._logger.logWithTitle(
-      `Block #${new BN(block.header.number).toString(10)}`,
-      bufferToHex(block.hash())
-    );
+
+    // Indent is set to true only in case of multiple transactions
+    // in a block, thus we don't need to print the block number every time
+    if (!indent) {
+      this._logger.logWithTitle(
+        `Block #${new BN(block.header.number).toString(10)}`,
+        bufferToHex(block.hash()),
+        indent
+      );
+    }
   }
 
   private _logConsoleLogMessages(messages: string[]) {
@@ -1239,12 +1251,14 @@ export class EthModule {
 
   private async _logContractAndFunctionName(
     trace: MessageTrace,
-    shouldBeContract: boolean
+    shouldBeContract: boolean,
+    indent = false
   ) {
     if (isPrecompileTrace(trace)) {
       this._logger.logWithTitle(
         "Precompile call",
-        `<PrecompileContract ${trace.precompile}>`
+        `<PrecompileContract ${trace.precompile}>`,
+        indent
       );
       return;
     }
@@ -1253,19 +1267,22 @@ export class EthModule {
       if (trace.bytecode === undefined) {
         this._logger.logWithTitle(
           "Contract deployment",
-          UNRECOGNIZED_CONTRACT_NAME
+          UNRECOGNIZED_CONTRACT_NAME,
+          indent
         );
       } else {
         this._logger.logWithTitle(
           "Contract deployment",
-          trace.bytecode.contract.name
+          trace.bytecode.contract.name,
+          indent
         );
       }
 
       if (trace.deployedContract !== undefined && trace.error === undefined) {
         this._logger.logWithTitle(
           "Contract address",
-          bufferToHex(trace.deployedContract)
+          bufferToHex(trace.deployedContract),
+          indent
         );
       }
 
@@ -1283,7 +1300,11 @@ export class EthModule {
     }
 
     if (trace.bytecode === undefined) {
-      this._logger.logWithTitle("Contract call", UNRECOGNIZED_CONTRACT_NAME);
+      this._logger.logWithTitle(
+        "Contract call",
+        UNRECOGNIZED_CONTRACT_NAME,
+        indent
+      );
       return;
     }
 
@@ -1302,12 +1323,13 @@ export class EthModule {
 
     this._logger.logWithTitle(
       "Contract call",
-      `${trace.bytecode.contract.name}#${functionName}`
+      `${trace.bytecode.contract.name}#${functionName}`,
+      indent
     );
   }
 
-  private _logValue(value: BN) {
-    this._logger.logWithTitle("Value", weiToHumanReadableString(value));
+  private _logValue(value: BN, indent = false) {
+    this._logger.logWithTitle("Value", weiToHumanReadableString(value), indent);
   }
 
   private _logError(error: Error) {
@@ -1318,8 +1340,8 @@ export class EthModule {
     this._logger.log(util.inspect(error));
   }
 
-  private _logFrom(from: Buffer) {
-    this._logger.logWithTitle("From", bufferToHex(from));
+  private _logFrom(from: Buffer, indent = false) {
+    this._logger.logWithTitle("From", bufferToHex(from), indent);
   }
 
   private async _sendTransactionAndReturnHash(tx: Transaction) {
@@ -1329,36 +1351,72 @@ export class EthModule {
       return txHash;
     }
 
-    const { trace, block, blockResult, consoleLogMessages, error } = result;
+    let error: Error | undefined;
+    const { block, blockResult, traces } = result;
+    let additionalIndent = false;
 
-    await this._logTransactionTrace(tx, trace, block, blockResult);
-
-    if (trace !== undefined) {
-      await this._runHardhatNetworkMessageTraceHooks(trace, false);
+    if (block.transactions.length > 1) {
+      this._logMultipleTransactionsWarning();
+      this._logBlockNumber(block);
+      additionalIndent = true;
     }
 
-    this._logConsoleLogMessages(consoleLogMessages);
+    for (let i = 0; i < block.transactions.length; i++) {
+      const blockTx = block.transactions[i];
+      const trace = traces[i];
 
-    if (error !== undefined) {
-      if (this._throwOnTransactionFailures) {
-        throw error;
+      await this._logTransactionTrace(
+        blockTx,
+        trace.trace,
+        block,
+        blockResult,
+        additionalIndent
+      );
+
+      this._logger.logInfo(""); // Prints an empty line
+
+      if (trace.trace !== undefined) {
+        await this._runHardhatNetworkMessageTraceHooks(trace.trace, false);
       }
 
-      // TODO: This is a little duplicated with the provider, it should be
-      //  refactored away
-      // TODO: This will log the error, but the RPC method won't be red
-      this._logError(error);
+      this._logConsoleLogMessages(trace.consoleLogMessages);
+
+      if (trace.error !== undefined) {
+        this._logError(trace.error);
+
+        if (bufferToRpcData(blockTx.hash(true)) === txHash) {
+          error = trace.error;
+        }
+      }
+    }
+
+    if (error !== undefined) {
+      throw error;
     }
 
     return txHash;
   }
 
-  private _logTo(to: Buffer, trace?: MessageTrace) {
+  private _logMultipleTransactionsWarning() {
+    this._logger.logInfo(
+      "There were other pending transactions mined in the same block:\n"
+    );
+  }
+
+  private _logBlockNumber(block: Block) {
+    this._logger.logInfo(
+      `Block #${new BN(block.header.number).toString(10)}: ${bufferToHex(
+        block.hash()
+      )}`
+    );
+  }
+
+  private _logTo(to: Buffer, trace?: MessageTrace, indent = false) {
     if (trace !== undefined && isCreateTrace(trace)) {
       return;
     }
 
-    this._logger.logWithTitle("To", bufferToHex(to));
+    this._logger.logWithTitle("To", bufferToHex(to), indent);
   }
 
   private async _runHardhatNetworkMessageTraceHooks(

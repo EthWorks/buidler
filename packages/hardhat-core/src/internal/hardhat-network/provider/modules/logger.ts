@@ -17,7 +17,12 @@ export class ModulesLogger {
     this._logs.push(message);
   }
 
-  public logWithTitle(title: string, message: string) {
+  public logWithTitle(title: string, message: string, indent = false) {
+    // Additional indent used in printing multiple transactions in a block
+    if (indent) {
+      title = " ".repeat(4) + title;
+    }
+
     // We always use the max title length we've seen. Otherwise the value move
     // a lot with each tx/call.
     if (title.length > this._titleLength) {
@@ -25,6 +30,10 @@ export class ModulesLogger {
     }
 
     this._logs.push([title, message]);
+  }
+
+  public logInfo(message: string) {
+    this._logs.push(message);
   }
 
   public debug(...args: any[]) {

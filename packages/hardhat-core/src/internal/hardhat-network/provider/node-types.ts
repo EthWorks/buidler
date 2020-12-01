@@ -86,9 +86,10 @@ export interface Snapshot {
   nextBlockTimestamp: BN;
 }
 
-export interface RunTransactionResult extends GatherTracesResult {
+export interface RunTransactionResult {
   block: Block;
   blockResult: RunBlockResult;
+  traces: GatherTracesResult[];
 }
 
 export interface RunCallResult extends GatherTracesResult {
