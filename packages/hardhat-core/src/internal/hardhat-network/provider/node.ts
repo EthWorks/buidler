@@ -1126,12 +1126,12 @@ export class HardhatNode extends EventEmitter {
     if (error.error === ERROR.OUT_OF_GAS) {
       if (this._isContractTooLargeStackTrace(stackTrace)) {
         return encodeSolidityStackTrace(
-          "Transaction run out of gas",
+          "Transaction ran out of gas",
           stackTrace!
         );
       }
 
-      return new TransactionExecutionError("Transaction run out of gas");
+      return new TransactionExecutionError("Transaction ran out of gas");
     }
 
     if (error.error === ERROR.REVERT) {
