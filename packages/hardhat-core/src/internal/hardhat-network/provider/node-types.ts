@@ -86,7 +86,12 @@ export interface Snapshot {
   nextBlockTimestamp: BN;
 }
 
-export interface RunTransactionResult {
+export type SendTransactionResult =
+  | string
+  | MineBlockResult
+  | MineBlockResult[];
+
+export interface MineBlockResult {
   block: Block;
   blockResult: RunBlockResult;
   traces: GatherTracesResult[];

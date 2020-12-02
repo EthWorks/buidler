@@ -62,7 +62,7 @@ import { HardhatNode } from "../node";
 import {
   CallParams,
   FilterParams,
-  RunTransactionResult,
+  MineBlockResult,
   TransactionParams,
 } from "../node-types";
 import {
@@ -1354,14 +1354,15 @@ export class EthModule {
   }
 
   private async _sendTransactionAndReturnHash(tx: Transaction) {
-    const results = await this._node.sendTransaction(tx);
-    const txHash = bufferToRpcData(tx.hash(true));
-    if (results === undefined) {
-      return txHash;
+    const sendResult = await this._node.sendTransaction(tx);
+    if (typeof sendResult === "string") {
+      return sendResult;
     }
+    const txHash = bufferToRpcData(tx.hash());
+    const results = Array.isArray(sendResult) ? sendResult : [sendResult];
 
     let multipleTransactions = false;
-    let sentTxResult: RunTransactionResult | undefined;
+    let sentTxResult: MineBlockResult | undefined;
     let sentTxIndex: number | undefined;
     let error: Error | undefined;
 
@@ -1389,7 +1390,7 @@ export class EthModule {
         const trace = traces[i];
         let isSentTx = false;
 
-        if (bufferToRpcData(blockTx.hash(true)) === txHash) {
+        if (bufferToRpcData(blockTx.hash()) === txHash) {
           sentTxResult = result;
           sentTxIndex = i;
           error = trace.error;
