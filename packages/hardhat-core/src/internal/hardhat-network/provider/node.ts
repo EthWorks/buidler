@@ -266,7 +266,7 @@ export class HardhatNode extends EventEmitter {
 
   public async sendTransaction(
     tx: Transaction
-  ): Promise<RunTransactionResult | undefined> {
+  ): Promise<RunTransactionResult[] | undefined> {
     if (!this._automine) {
       await this._addPendingTransaction(tx);
       return;
@@ -284,7 +284,6 @@ export class HardhatNode extends EventEmitter {
     sentTxHash: string
   ): Promise<RunTransactionResult>;
   public async mineBlock(timestamp?: BN): Promise<void>;
-
   public async mineBlock(
     timestamp?: BN,
     sentTxHash?: string
@@ -293,6 +292,7 @@ export class HardhatNode extends EventEmitter {
       timestamp,
       sentTxHash
     );
+
     if (sentTxHash !== undefined) {
       return {
         block,
@@ -818,15 +818,15 @@ export class HardhatNode extends EventEmitter {
 
   private async _mineTransaction(
     tx: Transaction
-  ): Promise<RunTransactionResult> {
+  ): Promise<RunTransactionResult[]> {
     await this._txPool.addTransaction(tx);
     await this._notifyPendingTransaction(tx);
-    return this.mineBlock(undefined, bufferToHex(tx.hash()));
+    return [await this.mineBlock(undefined, bufferToHex(tx.hash()))];
   }
 
   private async _mineTransactionAndPending(
     tx: Transaction
-  ): Promise<RunTransactionResult> {
+  ): Promise<RunTransactionResult[]> {
     const txHash = bufferToHex(tx.hash());
     const snapshotId = await this.takeSnapshot();
     await this._txPool.addTransaction(tx);
@@ -842,18 +842,18 @@ export class HardhatNode extends EventEmitter {
 
   private async _mineBlocksUntilTransactionIsIncluded(
     txHash: string
-  ): Promise<RunTransactionResult> {
-    let result;
+  ): Promise<RunTransactionResult[]> {
+    const results = [];
     let txReceipt;
     do {
       if (!this._txPool.hasPendingTransactions()) {
         throw new Error("this should never happen"); // TODO-Ethworks use other error
       }
-      result = await this.mineBlock(undefined, txHash);
+      results.push(await this.mineBlock(undefined, txHash));
       txReceipt = await this.getTransactionReceipt(txHash);
     } while (txReceipt === undefined);
 
-    return result;
+    return results;
   }
 
   private async _gatherTraces(result: ExecResult): Promise<GatherTracesResult> {

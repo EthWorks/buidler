@@ -1,4 +1,5 @@
 import { RunBlockResult } from "@nomiclabs/ethereumjs-vm/dist/runBlock";
+import chalk from "chalk";
 import Common from "ethereumjs-common";
 import { Transaction } from "ethereumjs-tx";
 import {
@@ -58,7 +59,12 @@ import {
   validateParams,
 } from "../input";
 import { HardhatNode } from "../node";
-import { CallParams, FilterParams, TransactionParams } from "../node-types";
+import {
+  CallParams,
+  FilterParams,
+  RunTransactionResult,
+  TransactionParams,
+} from "../node-types";
 import {
   bufferToRpcData,
   getRpcBlock,
@@ -1180,17 +1186,20 @@ export class EthModule {
     trace: MessageTrace | undefined,
     block: Block,
     blockResult: RunBlockResult,
-    indent = false
+    indent = false,
+    boldTxHash = false
   ) {
     if (trace !== undefined) {
       await this._logContractAndFunctionName(trace, false, indent);
     }
 
-    this._logger.logWithTitle(
-      "Transaction",
-      bufferToHex(tx.hash(true)),
-      indent
-    );
+    let txHash = bufferToHex(tx.hash(true));
+
+    if (boldTxHash) {
+      txHash = chalk.bold(txHash);
+    }
+
+    this._logger.logWithTitle("Transaction", txHash, indent);
     this._logFrom(tx.getSenderAddress(), indent);
     this._logTo(tx.to, trace, indent);
     this._logValue(new BN(tx.value), indent);
@@ -1345,49 +1354,94 @@ export class EthModule {
   }
 
   private async _sendTransactionAndReturnHash(tx: Transaction) {
-    const result = await this._node.sendTransaction(tx);
+    const results = await this._node.sendTransaction(tx);
     const txHash = bufferToRpcData(tx.hash(true));
-    if (result === undefined) {
+    if (results === undefined) {
       return txHash;
     }
 
+    let multipleTransactions = false;
+    let sentTxResult: RunTransactionResult | undefined;
+    let sentTxIndex: number | undefined;
     let error: Error | undefined;
-    const { block, blockResult, traces } = result;
-    let additionalIndent = false;
 
-    if (block.transactions.length > 1) {
-      this._logMultipleTransactionsWarning();
-      this._logBlockNumber(block);
-      additionalIndent = true;
+    if (results.length > 1) {
+      this._logMultipleBlocksWarning();
     }
 
-    for (let i = 0; i < block.transactions.length; i++) {
-      const blockTx = block.transactions[i];
-      const trace = traces[i];
+    for (const result of results) {
+      const { block, blockResult, traces } = result;
+      let additionalIndent = false;
 
+      if (results.length === 1 && block.transactions.length > 1) {
+        this._logMultipleTransactionsWarning();
+        this._logBlockNumber(block);
+        multipleTransactions = true;
+        additionalIndent = true;
+      } else if (results.length > 1) {
+        this._logBlockNumber(block);
+        multipleTransactions = true;
+        additionalIndent = true;
+      }
+
+      for (let i = 0; i < block.transactions.length; i++) {
+        const blockTx = block.transactions[i];
+        const trace = traces[i];
+        let isSentTx = false;
+
+        if (bufferToRpcData(blockTx.hash(true)) === txHash) {
+          sentTxResult = result;
+          sentTxIndex = i;
+          error = trace.error;
+
+          if (results.length > 1 || block.transactions.length > 1) {
+            isSentTx = true;
+          }
+        }
+
+        await this._logTransactionTrace(
+          blockTx,
+          trace.trace,
+          block,
+          blockResult,
+          additionalIndent,
+          isSentTx
+        );
+
+        // Prints an empty line between transactions listed in a block
+        if (i < block.transactions.length && block.transactions.length > 1) {
+          this._logger.logInfo("");
+        }
+
+        if (trace.trace !== undefined) {
+          await this._runHardhatNetworkMessageTraceHooks(trace.trace, false);
+        }
+
+        this._logConsoleLogMessages(trace.consoleLogMessages);
+
+        if (trace.error !== undefined) {
+          this._logError(trace.error);
+        }
+      }
+    }
+
+    if (
+      multipleTransactions &&
+      sentTxResult !== undefined &&
+      sentTxIndex !== undefined
+    ) {
+      const { block, blockResult, traces } = sentTxResult;
+      const trace = traces[sentTxIndex];
+
+      this._logger.logInfo(chalk.bold.yellow("\nCurrently sent transaction:"));
       await this._logTransactionTrace(
-        blockTx,
+        tx,
         trace.trace,
         block,
         blockResult,
-        additionalIndent
+        false,
+        true
       );
-
-      this._logger.logInfo(""); // Prints an empty line
-
-      if (trace.trace !== undefined) {
-        await this._runHardhatNetworkMessageTraceHooks(trace.trace, false);
-      }
-
-      this._logConsoleLogMessages(trace.consoleLogMessages);
-
-      if (trace.error !== undefined) {
-        this._logError(trace.error);
-
-        if (bufferToRpcData(blockTx.hash(true)) === txHash) {
-          error = trace.error;
-        }
-      }
     }
 
     if (error !== undefined) {
@@ -1403,11 +1457,21 @@ export class EthModule {
     );
   }
 
+  private _logMultipleBlocksWarning() {
+    this._logger.logInfo(
+      chalk.bold.yellow(
+        "There were other pending transactions. More than one block had to be mined:"
+      )
+    );
+  }
+
   private _logBlockNumber(block: Block) {
     this._logger.logInfo(
-      `Block #${new BN(block.header.number).toString(10)}: ${bufferToHex(
-        block.hash()
-      )}`
+      chalk.bold(
+        `Block #${new BN(block.header.number).toString(10)}: ${bufferToHex(
+          block.hash()
+        )}`
+      )
     );
   }
 
