@@ -5,6 +5,7 @@ import { Transaction } from "ethereumjs-tx";
 import {
   BN,
   bufferToHex,
+  bufferToInt,
   toBuffer,
   toRpcSig,
   zeroAddress,
@@ -1205,9 +1206,9 @@ export class EthModule {
     this._logValue(new BN(tx.value), indent);
     this._logger.logWithTitle(
       "Gas used",
-      `${new BN(blockResult.receipts[0].gasUsed).toString(10)} of ${new BN(
+      `${bufferToInt(blockResult.receipts[0].gasUsed)} of ${bufferToInt(
         tx.gasLimit
-      ).toString(10)}`,
+      )}`,
       indent
     );
 
@@ -1215,7 +1216,7 @@ export class EthModule {
     // in a block, thus we don't need to print the block number every time
     if (!indent) {
       this._logger.logWithTitle(
-        `Block #${new BN(block.header.number).toString(10)}`,
+        `Block #${bufferToInt(block.header.number)}`,
         bufferToHex(block.hash()),
         indent
       );
@@ -1469,7 +1470,7 @@ export class EthModule {
   private _logBlockNumber(block: Block) {
     this._logger.logInfo(
       chalk.bold(
-        `Block #${new BN(block.header.number).toString(10)}: ${bufferToHex(
+        `Block #${bufferToInt(block.header.number)}: ${bufferToHex(
           block.hash()
         )}`
       )
