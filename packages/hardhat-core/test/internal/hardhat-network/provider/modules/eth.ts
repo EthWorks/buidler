@@ -553,7 +553,7 @@ describe("Eth module", function () {
           assert.isTrue(new BN(toBuffer(result)).gt(new BN(toBuffer(result2))));
         });
 
-        it("should estimate the gas for a transaction in context of a pending block", async function () {
+        it("should estimate gas in the context of pending block when called with 'pending' blockTag param", async function () {
           const contractAddress = await deployContract(
             this.provider,
             `0x${EXAMPLE_CONTRACT.bytecode.object}`
