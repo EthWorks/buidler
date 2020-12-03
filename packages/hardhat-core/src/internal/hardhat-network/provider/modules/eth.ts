@@ -1447,7 +1447,7 @@ export class EthModule {
       );
     }
 
-    if (error !== undefined) {
+    if (error !== undefined && this._throwOnTransactionFailures) {
       throw error;
     }
 
