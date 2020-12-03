@@ -424,7 +424,7 @@ describe("Eth module", function () {
         });
 
         describe("when called with a block number as blockTag param", () => {
-          xit("Should be run in the context of the block passed as a parameter", async function () {
+          it("Should be run in the context of the block passed as a parameter", async function () {
             const firstBlock = await getFirstBlock();
 
             const contractAddress = await deployContract(
