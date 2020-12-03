@@ -1191,8 +1191,10 @@ export class EthModule {
     indent = false,
     boldTxHash = false
   ) {
+    this._logger.setIndent(indent);
+
     if (trace !== undefined) {
-      await this._logContractAndFunctionName(trace, false, indent);
+      await this._logContractAndFunctionName(trace, false);
     }
 
     let txHash = bufferToHex(tx.hash(true));
@@ -1201,16 +1203,15 @@ export class EthModule {
       txHash = chalk.bold(txHash);
     }
 
-    this._logger.logWithTitle("Transaction", txHash, indent);
-    this._logFrom(tx.getSenderAddress(), indent);
-    this._logTo(tx.to, trace, indent);
-    this._logValue(new BN(tx.value), indent);
+    this._logger.logWithTitle("Transaction", txHash);
+    this._logFrom(tx.getSenderAddress());
+    this._logTo(tx.to, trace);
+    this._logValue(new BN(tx.value));
     this._logger.logWithTitle(
       "Gas used",
       `${bufferToInt(blockResult.receipts[txIndex].gasUsed)} of ${bufferToInt(
         tx.gasLimit
-      )}`,
-      indent
+      )}`
     );
 
     // Indent is set to true only in case of multiple transactions
@@ -1218,10 +1219,11 @@ export class EthModule {
     if (!indent) {
       this._logger.logWithTitle(
         `Block #${bufferToInt(block.header.number)}`,
-        bufferToHex(block.hash()),
-        indent
+        bufferToHex(block.hash())
       );
     }
+
+    this._logger.setIndent(false);
   }
 
   private _logConsoleLogMessages(messages: string[]) {
@@ -1262,14 +1264,12 @@ export class EthModule {
 
   private async _logContractAndFunctionName(
     trace: MessageTrace,
-    shouldBeContract: boolean,
-    indent = false
+    shouldBeContract: boolean
   ) {
     if (isPrecompileTrace(trace)) {
       this._logger.logWithTitle(
         "Precompile call",
-        `<PrecompileContract ${trace.precompile}>`,
-        indent
+        `<PrecompileContract ${trace.precompile}>`
       );
       return;
     }
@@ -1278,22 +1278,19 @@ export class EthModule {
       if (trace.bytecode === undefined) {
         this._logger.logWithTitle(
           "Contract deployment",
-          UNRECOGNIZED_CONTRACT_NAME,
-          indent
+          UNRECOGNIZED_CONTRACT_NAME
         );
       } else {
         this._logger.logWithTitle(
           "Contract deployment",
-          trace.bytecode.contract.name,
-          indent
+          trace.bytecode.contract.name
         );
       }
 
       if (trace.deployedContract !== undefined && trace.error === undefined) {
         this._logger.logWithTitle(
           "Contract address",
-          bufferToHex(trace.deployedContract),
-          indent
+          bufferToHex(trace.deployedContract)
         );
       }
 
@@ -1311,11 +1308,7 @@ export class EthModule {
     }
 
     if (trace.bytecode === undefined) {
-      this._logger.logWithTitle(
-        "Contract call",
-        UNRECOGNIZED_CONTRACT_NAME,
-        indent
-      );
+      this._logger.logWithTitle("Contract call", UNRECOGNIZED_CONTRACT_NAME);
       return;
     }
 
@@ -1334,13 +1327,12 @@ export class EthModule {
 
     this._logger.logWithTitle(
       "Contract call",
-      `${trace.bytecode.contract.name}#${functionName}`,
-      indent
+      `${trace.bytecode.contract.name}#${functionName}`
     );
   }
 
-  private _logValue(value: BN, indent = false) {
-    this._logger.logWithTitle("Value", weiToHumanReadableString(value), indent);
+  private _logValue(value: BN) {
+    this._logger.logWithTitle("Value", weiToHumanReadableString(value));
   }
 
   private _logError(error: Error) {
@@ -1351,8 +1343,8 @@ export class EthModule {
     this._logger.log(util.inspect(error));
   }
 
-  private _logFrom(from: Buffer, indent = false) {
-    this._logger.logWithTitle("From", bufferToHex(from), indent);
+  private _logFrom(from: Buffer) {
+    this._logger.logWithTitle("From", bufferToHex(from));
   }
 
   private async _sendTransactionAndReturnHash(tx: Transaction) {
@@ -1490,12 +1482,12 @@ export class EthModule {
     );
   }
 
-  private _logTo(to: Buffer, trace?: MessageTrace, indent = false) {
+  private _logTo(to: Buffer, trace?: MessageTrace) {
     if (trace !== undefined && isCreateTrace(trace)) {
       return;
     }
 
-    this._logger.logWithTitle("To", bufferToHex(to), indent);
+    this._logger.logWithTitle("To", bufferToHex(to));
   }
 
   private async _runHardhatNetworkMessageTraceHooks(

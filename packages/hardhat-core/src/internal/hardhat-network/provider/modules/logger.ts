@@ -4,6 +4,8 @@ export class ModulesLogger {
   public enabled = false;
   private _logs: Array<string | [string, string]> = [];
   private _titleLength = 0;
+  private _indentEnabled = false;
+  private _indent = 4;
 
   public enable(isEnabled: boolean) {
     this.enabled = isEnabled;
@@ -17,10 +19,14 @@ export class ModulesLogger {
     this._logs.push(message);
   }
 
-  public logWithTitle(title: string, message: string, indent = false) {
+  public setIndent(flag: boolean) {
+    this._indentEnabled = flag;
+  }
+
+  public logWithTitle(title: string, message: string) {
     // Additional indent used in printing multiple transactions in a block
-    if (indent) {
-      title = " ".repeat(4) + title;
+    if (this._indentEnabled) {
+      title = " ".repeat(this._indent) + title;
     }
 
     // We always use the max title length we've seen. Otherwise the value move
