@@ -292,7 +292,7 @@ export class HardhatNetworkProvider extends EventEmitter
       this._reset.bind(this),
       (loggingEnabled: boolean) => {
         this._loggingEnabled = loggingEnabled;
-        this._logger.enable(loggingEnabled);
+        this._logger.setEnabled(loggingEnabled);
       }
     );
 

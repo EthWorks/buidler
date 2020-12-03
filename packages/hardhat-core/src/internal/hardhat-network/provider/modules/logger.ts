@@ -1,14 +1,18 @@
 import util from "util";
 
 export class ModulesLogger {
-  public enabled = false;
+  private _enabled = false;
   private _logs: Array<string | [string, string]> = [];
   private _titleLength = 0;
   private _indentEnabled = false;
   private _indent = 4;
 
-  public enable(isEnabled: boolean) {
-    this.enabled = isEnabled;
+  public get enabled() {
+    return this._enabled;
+  }
+
+  public setEnabled(enabled: boolean) {
+    this._enabled = enabled;
   }
 
   public log(message: string) {
@@ -24,6 +28,10 @@ export class ModulesLogger {
   }
 
   public logWithTitle(title: string, message: string) {
+    if (!this.enabled) {
+      return;
+    }
+
     // Additional indent used in printing multiple transactions in a block
     if (this._indentEnabled) {
       title = " ".repeat(this._indent) + title;
@@ -36,10 +44,6 @@ export class ModulesLogger {
     }
 
     this._logs.push([title, message]);
-  }
-
-  public logInfo(message: string) {
-    this._logs.push(message);
   }
 
   public debug(...args: any[]) {

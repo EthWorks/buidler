@@ -1375,7 +1375,7 @@ export class EthModule {
     totalTransactions: number
   ) {
     if (currentIndex < totalTransactions && totalTransactions > 1) {
-      this._logger.logInfo("");
+      this._logger.log("");
     }
   }
 
@@ -1510,7 +1510,7 @@ export class EthModule {
     const { block, blockResult, traces } = result;
     const trace = traces[index];
 
-    this._logger.logInfo(chalk.bold.yellow("\nCurrently sent transaction:"));
+    this._logger.log(chalk.bold.yellow("\nCurrently sent transaction:"));
     await this._logTransactionTrace(
       tx,
       trace.trace,
@@ -1523,13 +1523,13 @@ export class EthModule {
   }
 
   private _logMultipleTransactionsWarning() {
-    this._logger.logInfo(
+    this._logger.log(
       "There were other pending transactions mined in the same block:\n"
     );
   }
 
   private _logMultipleBlocksWarning() {
-    this._logger.logInfo(
+    this._logger.log(
       chalk.bold.yellow(
         "There were other pending transactions. More than one block had to be mined:"
       )
@@ -1537,7 +1537,7 @@ export class EthModule {
   }
 
   private _logBlockNumber(block: Block) {
-    this._logger.logInfo(
+    this._logger.log(
       chalk.bold(
         `Block #${bufferToInt(block.header.number)}: ${bufferToHex(
           block.hash()
