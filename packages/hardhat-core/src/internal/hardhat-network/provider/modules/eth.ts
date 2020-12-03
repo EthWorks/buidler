@@ -1,4 +1,4 @@
-import { RunBlockResult } from "@nomiclabs/ethereumjs-vm/dist/runBlock";
+import { TxReceipt } from "@nomiclabs/ethereumjs-vm/dist/runBlock";
 import chalk from "chalk";
 import Common from "ethereumjs-common";
 import { Transaction } from "ethereumjs-tx";
@@ -1187,8 +1187,7 @@ export class EthModule {
     tx: Transaction,
     trace: MessageTrace | undefined,
     block: Block,
-    blockResult: RunBlockResult,
-    txIndex: number,
+    txGasUsed: number,
     indent = false,
     boldTxHash = false
   ) {
@@ -1198,7 +1197,7 @@ export class EthModule {
       await this._logContractAndFunctionName(trace, false);
     }
 
-    let txHash = bufferToHex(tx.hash(true));
+    let txHash = bufferToHex(tx.hash());
 
     if (boldTxHash) {
       txHash = chalk.bold(txHash);
@@ -1210,9 +1209,7 @@ export class EthModule {
     this._logValue(new BN(tx.value));
     this._logger.logWithTitle(
       "Gas used",
-      `${bufferToInt(blockResult.receipts[txIndex].gasUsed)} of ${bufferToInt(
-        tx.gasLimit
-      )}`
+      `${txGasUsed} of ${bufferToInt(tx.gasLimit)}`
     );
 
     // Indent is set to true only in case of multiple transactions
@@ -1349,25 +1346,23 @@ export class EthModule {
   }
 
   private async _sendTransactionAndReturnHash(tx: Transaction) {
-    const sendResult = await this._node.sendTransaction(tx);
-    if (typeof sendResult === "string") {
-      return sendResult;
+    let result = await this._node.sendTransaction(tx);
+    if (typeof result === "string") {
+      return result;
     }
-    const txHash = bufferToRpcData(tx.hash());
-    const results = Array.isArray(sendResult) ? sendResult : [sendResult];
 
-    if (results.length > 1) {
+    if (Array.isArray(result)) {
       this._logMultipleBlocksWarning();
-    } else if (results.length === 1) {
-      const { block } = results[0];
-      if (block.transactions.length > 1) {
+    } else {
+      if (result.block.transactions.length > 1) {
         this._logMultipleTransactionsWarning();
       }
+      result = [result];
     }
 
-    await this._logMineBlockResults(results, tx);
+    await this._handleMineBlockResults(result, tx);
 
-    return txHash;
+    return bufferToRpcData(tx.hash());
   }
 
   private _printEmptyLineBetweenTransactions(
@@ -1379,146 +1374,124 @@ export class EthModule {
     }
   }
 
-  private async _logMineBlockResults(
+  private async _handleMineBlockResults(
     results: MineBlockResult[],
-    tx: Transaction
+    sentTx: Transaction
   ) {
-    const txHash = bufferToRpcData(tx.hash());
-    let sentTxResult: MineBlockResult | undefined;
-    let sentTxIndex: number | undefined;
-    let error: Error | undefined;
-    let multipleTransactions = false;
+    const manyTransactionsLogged =
+      (results.length === 1 && results[0].block.transactions.length > 1) ||
+      results.length > 1;
 
     for (const result of results) {
-      const { block } = result;
-
-      let additionalIndent = false;
-
-      if (results.length === 1 && block.transactions.length > 1) {
-        this._logBlockNumber(block);
-        multipleTransactions = true;
-        additionalIndent = true;
-      } else if (results.length > 1) {
-        this._logBlockNumber(block);
-        multipleTransactions = true;
-        additionalIndent = true;
-      }
-
-      ({ sentTxResult, sentTxIndex, error } = await this._logBlock(
-        result,
-        results.length,
-        txHash,
-        additionalIndent
-      ));
+      await this._logBlock(result, sentTx, manyTransactionsLogged);
     }
 
-    if (
-      multipleTransactions &&
-      sentTxResult !== undefined &&
-      sentTxIndex !== undefined
-    ) {
-      await this._logCurrentlySentTransaction(tx, sentTxResult, sentTxIndex);
+    const sentTxResult = results[results.length - 1];
+    const sentTxIndex = this._getTransactionIndex(sentTx, sentTxResult);
+    const sentTxTrace = sentTxResult.traces[sentTxIndex];
+
+    if (manyTransactionsLogged) {
+      const { block, blockResult } = sentTxResult;
+      const txReceipt = blockResult.receipts[sentTxIndex];
+      await this._logCurrentlySentTransaction(
+        sentTx,
+        txReceipt,
+        sentTxTrace,
+        block
+      );
     }
 
-    if (error !== undefined && this._throwOnTransactionFailures) {
-      throw error;
+    const sentTxError = sentTxTrace.error;
+    if (sentTxError !== undefined && this._throwOnTransactionFailures) {
+      throw sentTxError;
     }
   }
 
   private async _logBlock(
     result: MineBlockResult,
-    totalResults: number,
-    txHash: string,
-    additionalIndent: boolean
+    sentTx: Transaction,
+    manyTransactionsLogged: boolean
   ) {
     const { block, blockResult, traces } = result;
 
-    let sentTxResult: MineBlockResult | undefined;
-    let sentTxIndex: number | undefined;
-    let error: Error | undefined;
-
-    for (let i = 0; i < block.transactions.length; i++) {
-      const blockTx = block.transactions[i];
-      const trace = traces[i];
-      let isSentTx = false;
-
-      if (bufferToRpcData(blockTx.hash()) === txHash) {
-        sentTxResult = result;
-        sentTxIndex = i;
-        error = trace.error;
-
-        if (totalResults > 1 || block.transactions.length > 1) {
-          isSentTx = true;
-        }
-      }
-
-      await this._logBlockTransaction(
-        blockTx,
-        block,
-        blockResult,
-        trace,
-        i,
-        additionalIndent,
-        isSentTx
-      );
+    if (manyTransactionsLogged) {
+      this._logBlockNumber(result.block);
     }
 
-    return {
-      sentTxResult,
-      sentTxIndex,
-      error,
-    };
+    for (let i = 0; i < block.transactions.length; i++) {
+      const tx = block.transactions[i];
+      const txGasUsed = bufferToInt(blockResult.receipts[i].gasUsed);
+      const txTrace = traces[i];
+
+      const boldTxHash =
+        manyTransactionsLogged && tx.hash().equals(sentTx.hash());
+
+      await this._logBlockTransaction(
+        tx,
+        txGasUsed,
+        txTrace,
+        block,
+        manyTransactionsLogged,
+        boldTxHash
+      );
+
+      this._printEmptyLineBetweenTransactions(i, block.transactions.length);
+    }
   }
 
   private async _logBlockTransaction(
-    blockTx: Transaction,
+    tx: Transaction,
+    txGasUsed: number,
+    txTrace: GatherTracesResult,
     block: Block,
-    blockResult: RunBlockResult,
-    trace: GatherTracesResult,
-    index: number,
     additionalIndent: boolean,
-    isSentTx: boolean
+    boldTxHash: boolean
   ) {
     await this._logTransactionTrace(
-      blockTx,
-      trace.trace,
+      tx,
+      txTrace.trace,
       block,
-      blockResult,
-      index,
+      txGasUsed,
       additionalIndent,
-      isSentTx
+      boldTxHash
     );
 
-    if (trace.trace !== undefined) {
-      await this._runHardhatNetworkMessageTraceHooks(trace.trace, false);
+    if (txTrace.trace !== undefined) {
+      await this._runHardhatNetworkMessageTraceHooks(txTrace.trace, false);
     }
 
-    this._logConsoleLogMessages(trace.consoleLogMessages);
+    this._logConsoleLogMessages(txTrace.consoleLogMessages);
 
-    if (trace.error !== undefined) {
-      this._logError(trace.error);
+    if (txTrace.error !== undefined) {
+      this._logError(txTrace.error);
     }
-
-    this._printEmptyLineBetweenTransactions(index, block.transactions.length);
   }
 
   private async _logCurrentlySentTransaction(
     tx: Transaction,
-    result: MineBlockResult,
-    index: number
+    txReceipt: TxReceipt,
+    txTrace: GatherTracesResult,
+    block: Block
   ) {
-    const { block, blockResult, traces } = result;
-    const trace = traces[index];
-
+    const txGasUsed = bufferToInt(txReceipt.gasUsed);
     this._logger.log(chalk.bold.yellow("\nCurrently sent transaction:"));
-    await this._logTransactionTrace(
-      tx,
-      trace.trace,
-      block,
-      blockResult,
-      index,
-      false,
-      true
+    await this._logBlockTransaction(tx, txGasUsed, txTrace, block, false, true);
+  }
+
+  private _getTransactionIndex(
+    tx: Transaction,
+    result: MineBlockResult
+  ): number {
+    const transactions = result.block.transactions;
+    for (let i = 0; i < transactions.length; i++) {
+      const blockTx = transactions[i];
+      if (blockTx.hash().equals(tx.hash())) {
+        return i;
+      }
+    }
+
+    throw new Error(
+      "The sent transaction not found in sendTransaction result, this should never happen"
     );
   }
 
