@@ -1369,6 +1369,11 @@ export class EthModule {
 
     if (results.length > 1) {
       this._logMultipleBlocksWarning();
+    } else if (results.length === 1) {
+      const { block } = results[0];
+      if (block.transactions.length > 1) {
+        this._logMultipleTransactionsWarning();
+      }
     }
 
     for (const result of results) {
@@ -1376,7 +1381,6 @@ export class EthModule {
       let additionalIndent = false;
 
       if (results.length === 1 && block.transactions.length > 1) {
-        this._logMultipleTransactionsWarning();
         this._logBlockNumber(block);
         multipleTransactions = true;
         additionalIndent = true;
