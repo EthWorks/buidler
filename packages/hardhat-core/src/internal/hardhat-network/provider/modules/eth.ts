@@ -1187,6 +1187,7 @@ export class EthModule {
     trace: MessageTrace | undefined,
     block: Block,
     blockResult: RunBlockResult,
+    txIndex: number,
     indent = false,
     boldTxHash = false
   ) {
@@ -1206,7 +1207,7 @@ export class EthModule {
     this._logValue(new BN(tx.value), indent);
     this._logger.logWithTitle(
       "Gas used",
-      `${bufferToInt(blockResult.receipts[0].gasUsed)} of ${bufferToInt(
+      `${bufferToInt(blockResult.receipts[txIndex].gasUsed)} of ${bufferToInt(
         tx.gasLimit
       )}`,
       indent
@@ -1410,6 +1411,7 @@ export class EthModule {
           trace.trace,
           block,
           blockResult,
+          i,
           additionalIndent,
           isSentTx
         );
@@ -1442,6 +1444,7 @@ export class EthModule {
         trace.trace,
         block,
         blockResult,
+        sentTxIndex,
         false,
         true
       );
