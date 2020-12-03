@@ -409,7 +409,7 @@ export class HardhatNode extends EventEmitter {
     });
 
     const result = await this._runInBlockContext(blockNumberOrPending, () =>
-      this._runTxAndRevertMutations(tx)
+      this._runTxAndRevertMutations(tx, blockNumberOrPending !== "pending")
     );
 
     let vmTrace = this._vmTracer.getLastTopLevelMessageTrace();
@@ -444,6 +444,7 @@ export class HardhatNode extends EventEmitter {
 
     return {
       estimation: await this._correctInitialEstimation(
+        blockNumberOrPending,
         txParams,
         initialEstimation
       ),
@@ -1397,6 +1398,7 @@ export class HardhatNode extends EventEmitter {
   }
 
   private async _correctInitialEstimation(
+    blockNumberOrPending: BN | "pending",
     txParams: TransactionParams,
     initialEstimation: BN
   ): Promise<BN> {
@@ -1414,13 +1416,16 @@ export class HardhatNode extends EventEmitter {
       });
     }
 
-    const result = await this._runTxAndRevertMutations(tx);
+    const result = await this._runInBlockContext(blockNumberOrPending, () =>
+      this._runTxAndRevertMutations(tx, blockNumberOrPending !== "pending")
+    );
 
     if (result.execResult.exceptionError === undefined) {
       return initialEstimation;
     }
 
     return this._binarySearchEstimation(
+      blockNumberOrPending,
       txParams,
       initialEstimation,
       this.getBlockGasLimit()
@@ -1428,6 +1433,7 @@ export class HardhatNode extends EventEmitter {
   }
 
   private async _binarySearchEstimation(
+    blockNumberOrPending: BN | "pending",
     txParams: TransactionParams,
     highestFailingEstimation: BN,
     lowestSuccessfulEstimation: BN,
@@ -1482,10 +1488,13 @@ export class HardhatNode extends EventEmitter {
       gasLimit: newEstimation,
     });
 
-    const result = await this._runTxAndRevertMutations(tx);
+    const result = await this._runInBlockContext(blockNumberOrPending, () =>
+      this._runTxAndRevertMutations(tx, blockNumberOrPending !== "pending")
+    );
 
     if (result.execResult.exceptionError === undefined) {
       return this._binarySearchEstimation(
+        blockNumberOrPending,
         txParams,
         highestFailingEstimation,
         newEstimation,
@@ -1494,6 +1503,7 @@ export class HardhatNode extends EventEmitter {
     }
 
     return this._binarySearchEstimation(
+      blockNumberOrPending,
       txParams,
       newEstimation,
       lowestSuccessfulEstimation,
