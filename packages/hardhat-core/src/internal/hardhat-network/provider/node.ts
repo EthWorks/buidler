@@ -846,16 +846,9 @@ export class HardhatNode extends EventEmitter {
   ): Promise<MineBlockResult[]> {
     const snapshotId = await this.takeSnapshot();
 
-    let txHash: string;
-    try {
-      txHash = await this._addPendingTransaction(tx);
-    } catch (err) {
-      this._removeSnapshot(snapshotId);
-      throw err;
-    }
-
     let result;
     try {
+      const txHash = await this._addPendingTransaction(tx);
       result = await this._mineBlocksUntilTransactionIsIncluded(txHash);
     } catch (err) {
       await this.revertToSnapshot(snapshotId);
