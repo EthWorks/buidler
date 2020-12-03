@@ -271,6 +271,37 @@ describe("Eth module", function () {
         });
 
         it("Should be run in the context of a new block with 'pending' block tag param", async function () {
+          const firstBlock = await getFirstBlock();
+          const contractAddress = await deployContract(
+            this.provider,
+            `0x${EXAMPLE_READ_CONTRACT.bytecode.object}`
+          );
+
+          const timestamp = getCurrentTimestamp() + 60;
+          await this.provider.send("evm_setNextBlockTimestamp", [timestamp]);
+
+          const blockResult = await this.provider.send("eth_call", [
+            {
+              to: contractAddress,
+              data: EXAMPLE_READ_CONTRACT.selectors.blockNumber,
+            },
+            "pending",
+          ]);
+
+          assert.equal(dataToNumber(blockResult), firstBlock + 2);
+
+          const timestampResult = await this.provider.send("eth_call", [
+            {
+              to: contractAddress,
+              data: EXAMPLE_READ_CONTRACT.selectors.blockTimestamp,
+            },
+            "pending",
+          ]);
+
+          assert.equal(timestampResult, timestamp);
+        });
+
+        it("(TODO change name) Should include mined be run in the context of a new block with 'pending' block tag param", async function () {
           const snapshotId = await this.provider.send("evm_snapshot");
           const contractAddress = await deployContract(
             this.provider,
