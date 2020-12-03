@@ -395,6 +395,7 @@ describe("Eth module", function () {
               "pending",
             ]);
 
+            // result would equal "0x" if the contract wasn't deployed
             assert.equal(
               result,
               "0x0000000000000000000000000000000000000000000000000000000000000000"
