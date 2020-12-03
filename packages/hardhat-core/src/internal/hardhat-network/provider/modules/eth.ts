@@ -1414,11 +1414,6 @@ export class EthModule {
           isSentTx
         );
 
-        // Prints an empty line between transactions listed in a block
-        if (i < block.transactions.length && block.transactions.length > 1) {
-          this._logger.logInfo("");
-        }
-
         if (trace.trace !== undefined) {
           await this._runHardhatNetworkMessageTraceHooks(trace.trace, false);
         }
@@ -1428,6 +1423,8 @@ export class EthModule {
         if (trace.error !== undefined) {
           this._logError(trace.error);
         }
+
+        this._printEmptyLineBetweenTransactions(i, block.transactions.length);
       }
     }
 
@@ -1455,6 +1452,15 @@ export class EthModule {
     }
 
     return txHash;
+  }
+
+  private _printEmptyLineBetweenTransactions(
+    currentIndex: number,
+    totalTransactions: number
+  ) {
+    if (currentIndex < totalTransactions && totalTransactions > 1) {
+      this._logger.logInfo("");
+    }
   }
 
   private _logMultipleTransactionsWarning() {
