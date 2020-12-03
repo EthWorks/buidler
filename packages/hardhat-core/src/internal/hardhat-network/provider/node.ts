@@ -866,7 +866,9 @@ export class HardhatNode extends EventEmitter {
     let txReceipt;
     do {
       if (!this._txPool.hasPendingTransactions()) {
-        throw new Error("this should never happen"); // TODO-Ethworks use other error
+        throw new TransactionExecutionError(
+          "Failed to mine transaction for unknown reason, this should never happen"
+        );
       }
       results.push(await this.mineBlock(undefined, txHash));
       txReceipt = await this.getTransactionReceipt(txHash);
