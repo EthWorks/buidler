@@ -2936,10 +2936,81 @@ describe("Eth module", function () {
       });
 
       describe("eth_pendingTransactions", async function () {
-        it("should return an empty array, as there is no pending transactions support", async function () {
+        it("should return an empty array if there are no pending transactions", async function () {
           assert.deepEqual(
             await this.provider.send("eth_pendingTransactions"),
             []
+          );
+        });
+
+        it("should return an array of pending transactions", async function () {
+          const sendDummyTransaction = async (nonce: number) => {
+            return this.provider.send("eth_sendTransaction", [
+              {
+                from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+                to: DEFAULT_ACCOUNTS_ADDRESSES[1],
+                nonce: numberToRpcQuantity(nonce),
+              },
+            ]);
+          };
+
+          await this.provider.send("evm_setAutomineEnabled", [false]);
+
+          const txs = [];
+          txs.push(await sendDummyTransaction(0));
+          txs.push(await sendDummyTransaction(1));
+          txs.push(await sendDummyTransaction(4));
+          txs.push(await sendDummyTransaction(9));
+
+          const pendingTransactions = await this.provider.send(
+            "eth_pendingTransactions"
+          );
+
+          assert.lengthOf(pendingTransactions, 4);
+          assert.sameOrderedMembers(
+            pendingTransactions.map((tx: { hash: any }) => tx.hash),
+            txs
+          );
+        });
+
+        it("should return an array with remaining pending transactions after a block was mined", async function () {
+          const sendDummyTransaction = async (nonce: number) => {
+            return this.provider.send("eth_sendTransaction", [
+              {
+                from: DEFAULT_ACCOUNTS_ADDRESSES[0],
+                to: DEFAULT_ACCOUNTS_ADDRESSES[1],
+                nonce: numberToRpcQuantity(nonce),
+              },
+            ]);
+          };
+
+          await this.provider.send("evm_setAutomineEnabled", [false]);
+
+          await sendDummyTransaction(0);
+          await sendDummyTransaction(1);
+
+          const tx1 = await sendDummyTransaction(4);
+          const tx2 = await sendDummyTransaction(9);
+
+          const pendingTransactionsBefore = await this.provider.send(
+            "eth_pendingTransactions"
+          );
+
+          await this.provider.send("evm_mine");
+
+          const pendingTransactionsAfter = await this.provider.send(
+            "eth_pendingTransactions"
+          );
+
+          assert.notSameDeepOrderedMembers(
+            pendingTransactionsAfter,
+            pendingTransactionsBefore
+          );
+          assert.lengthOf(pendingTransactionsBefore, 4);
+          assert.lengthOf(pendingTransactionsAfter, 2);
+          assert.sameOrderedMembers(
+            pendingTransactionsAfter.map((tx: { hash: any }) => tx.hash),
+            [tx1, tx2]
           );
         });
       });
