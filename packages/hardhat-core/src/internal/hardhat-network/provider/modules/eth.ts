@@ -1333,7 +1333,7 @@ export class EthModule {
     //   errors is disabled. The empty line is normally printed by the provider
     //   when an exception is thrown. As we don't throw, we do it here.
     this._logger.log("");
-    this._logger.log(util.inspect(error));
+    this._logger.log(chalk.red(util.inspect(error)));
   }
 
   private _logFrom(from: Buffer) {
