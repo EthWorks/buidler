@@ -20,6 +20,10 @@ export class ModulesLogger {
       return;
     }
 
+    if (this._indentEnabled) {
+      message = " ".repeat(this._indent) + message;
+    }
+
     this._logs.push(message);
   }
 
@@ -32,7 +36,6 @@ export class ModulesLogger {
       return;
     }
 
-    // Additional indent used in printing multiple transactions in a block
     if (this._indentEnabled) {
       title = " ".repeat(this._indent) + title;
     }

@@ -1189,11 +1189,9 @@ export class EthModule {
     trace: MessageTrace | undefined,
     block: Block,
     txGasUsed: number,
-    indent = false,
-    boldTxHash = false
+    manyTransactionsLogged: boolean,
+    boldTxHash: boolean,
   ) {
-    this._logger.setIndent(indent);
-
     if (trace !== undefined) {
       await this._logContractAndFunctionName(trace, false);
     }
@@ -1213,16 +1211,12 @@ export class EthModule {
       `${txGasUsed} of ${bufferToInt(tx.gasLimit)}`
     );
 
-    // Indent is set to true only in case of multiple transactions
-    // in a block, thus we don't need to print the block number every time
-    if (!indent) {
+    if (!manyTransactionsLogged) {
       this._logger.logWithTitle(
         `Block #${bufferToInt(block.header.number)}`,
         bufferToHex(block.hash())
       );
     }
-
-    this._logger.setIndent(false);
   }
 
   private _logConsoleLogMessages(messages: string[]) {
@@ -1449,15 +1443,17 @@ export class EthModule {
     txGasUsed: number,
     txTrace: GatherTracesResult,
     block: Block,
-    additionalIndent: boolean,
+    manyTransactionsLogged: boolean,
     boldTxHash: boolean
   ) {
+    this._logger.setIndent(manyTransactionsLogged);
+
     await this._logTransactionTrace(
       tx,
       txTrace.trace,
       block,
       txGasUsed,
-      additionalIndent,
+      manyTransactionsLogged,
       boldTxHash
     );
 
@@ -1470,6 +1466,8 @@ export class EthModule {
     if (txTrace.error !== undefined) {
       this._logError(txTrace.error);
     }
+
+    this._logger.setIndent(false);
   }
 
   private async _logCurrentlySentTransaction(
