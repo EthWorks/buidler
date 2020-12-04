@@ -1190,7 +1190,7 @@ export class EthModule {
     block: Block,
     txGasUsed: number,
     manyTransactionsLogged: boolean,
-    boldTxHash: boolean,
+    boldTxHash: boolean
   ) {
     if (trace !== undefined) {
       await this._logContractAndFunctionName(trace, false);
@@ -1224,7 +1224,7 @@ export class EthModule {
     // messages. The difference is how.
     // If we have a logger, we should use that, so that logs are printed in
     // order. If we don't, we just print the messages here.
-    if (!this._logger.enabled) {
+    if (!this._logger.isEnabled()) {
       for (const msg of messages) {
         console.log(msg);
       }
@@ -1398,7 +1398,7 @@ export class EthModule {
 
     const sentTxError = sentTxTrace.error;
     if (sentTxError !== undefined && this._throwOnTransactionFailures) {
-      if (this._logger.enabled) {
+      if (this._logger.isEnabled()) {
         throw asLoggedError(sentTxError);
       }
 
@@ -1446,7 +1446,7 @@ export class EthModule {
     manyTransactionsLogged: boolean,
     boldTxHash: boolean
   ) {
-    this._logger.setIndent(manyTransactionsLogged);
+    this._logger.setIndentEnabled(manyTransactionsLogged);
 
     await this._logTransactionTrace(
       tx,
@@ -1467,7 +1467,7 @@ export class EthModule {
       this._logError(txTrace.error);
     }
 
-    this._logger.setIndent(false);
+    this._logger.setIndentEnabled(false);
   }
 
   private async _logCurrentlySentTransaction(

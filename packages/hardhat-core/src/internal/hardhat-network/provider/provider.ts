@@ -62,7 +62,7 @@ export class HardhatNetworkProvider extends EventEmitter
   private _evmModule?: EvmModule;
   private _hardhatModule?: HardhatModule;
   private readonly _mutex = new Mutex();
-  private readonly _logger = new ModulesLogger();
+  private _logger;
 
   private _methodBeingCollapsed?: string;
   private _methodCollapsedCount: number = 0;
@@ -87,6 +87,7 @@ export class HardhatNetworkProvider extends EventEmitter
     private readonly _forkCachePath?: string
   ) {
     super();
+    this._logger = new ModulesLogger(_loggingEnabled);
   }
 
   public async request(args: RequestArguments): Promise<unknown> {

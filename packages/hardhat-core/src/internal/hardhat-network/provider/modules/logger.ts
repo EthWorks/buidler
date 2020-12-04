@@ -1,13 +1,14 @@
 import util from "util";
 
 export class ModulesLogger {
-  private _enabled = false;
   private _logs: Array<string | [string, string]> = [];
   private _titleLength = 0;
   private _indentEnabled = false;
-  private _indent = 4;
+  private readonly _indent = 4;
 
-  public get enabled() {
+  constructor(private _enabled: boolean) {}
+
+  public isEnabled() {
     return this._enabled;
   }
 
@@ -15,8 +16,12 @@ export class ModulesLogger {
     this._enabled = enabled;
   }
 
+  public setIndentEnabled(flag: boolean) {
+    this._indentEnabled = flag;
+  }
+
   public log(message: string) {
-    if (!this.enabled) {
+    if (!this.isEnabled()) {
       return;
     }
 
@@ -27,12 +32,8 @@ export class ModulesLogger {
     this._logs.push(message);
   }
 
-  public setIndent(flag: boolean) {
-    this._indentEnabled = flag;
-  }
-
   public logWithTitle(title: string, message: string) {
-    if (!this.enabled) {
+    if (!this.isEnabled()) {
       return;
     }
 
