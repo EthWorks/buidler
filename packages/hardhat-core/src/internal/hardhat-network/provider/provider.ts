@@ -40,6 +40,7 @@ import {
   NodeConfig,
   TracingConfig,
 } from "./node-types";
+import { LoggedError } from "./types/LoggedError";
 
 const log = debug("hardhat:core:hardhat-network:provider");
 
@@ -61,7 +62,7 @@ export class HardhatNetworkProvider extends EventEmitter
   private _evmModule?: EvmModule;
   private _hardhatModule?: HardhatModule;
   private readonly _mutex = new Mutex();
-  private readonly _logger = new ModulesLogger();
+  private _logger;
 
   private _methodBeingCollapsed?: string;
   private _methodCollapsedCount: number = 0;
@@ -86,6 +87,7 @@ export class HardhatNetworkProvider extends EventEmitter
     private readonly _forkCachePath?: string
   ) {
     super();
+    this._logger = new ModulesLogger(_loggingEnabled);
   }
 
   public async request(args: RequestArguments): Promise<unknown> {
@@ -154,6 +156,11 @@ export class HardhatNetworkProvider extends EventEmitter
       const loggedSomething = this._logModuleMessages();
       if (loggedSomething) {
         this._log("");
+      }
+
+      if (err instanceof LoggedError) {
+        this._log("");
+        throw err.wrappedError;
       }
 
       if (err instanceof SolidityError) {
@@ -292,7 +299,7 @@ export class HardhatNetworkProvider extends EventEmitter
       this._reset.bind(this),
       (loggingEnabled: boolean) => {
         this._loggingEnabled = loggingEnabled;
-        this._logger.enable(loggingEnabled);
+        this._logger.setEnabled(loggingEnabled);
       }
     );
 
