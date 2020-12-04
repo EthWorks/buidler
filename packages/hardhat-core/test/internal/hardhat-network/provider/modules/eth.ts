@@ -47,6 +47,7 @@ import {
   PROVIDERS,
 } from "../../helpers/providers";
 import { retrieveForkBlockNumber } from "../../helpers/retrieveForkBlockNumber";
+import { sendDummyTransaction } from "../../helpers/sendDummyTransaction";
 import {
   deployContract,
   getSignedTxHash,
@@ -2944,23 +2945,13 @@ describe("Eth module", function () {
         });
 
         it("should return an array of pending transactions", async function () {
-          const sendDummyTransaction = async (nonce: number) => {
-            return this.provider.send("eth_sendTransaction", [
-              {
-                from: DEFAULT_ACCOUNTS_ADDRESSES[0],
-                to: DEFAULT_ACCOUNTS_ADDRESSES[1],
-                nonce: numberToRpcQuantity(nonce),
-              },
-            ]);
-          };
-
           await this.provider.send("evm_setAutomineEnabled", [false]);
 
           const txs = [];
-          txs.push(await sendDummyTransaction(0));
-          txs.push(await sendDummyTransaction(1));
-          txs.push(await sendDummyTransaction(4));
-          txs.push(await sendDummyTransaction(9));
+          txs.push(await sendDummyTransaction(this.provider, 0));
+          txs.push(await sendDummyTransaction(this.provider, 1));
+          txs.push(await sendDummyTransaction(this.provider, 4));
+          txs.push(await sendDummyTransaction(this.provider, 9));
 
           const pendingTransactions = await this.provider.send(
             "eth_pendingTransactions"
@@ -2974,23 +2965,13 @@ describe("Eth module", function () {
         });
 
         it("should return an array with remaining pending transactions after a block was mined", async function () {
-          const sendDummyTransaction = async (nonce: number) => {
-            return this.provider.send("eth_sendTransaction", [
-              {
-                from: DEFAULT_ACCOUNTS_ADDRESSES[0],
-                to: DEFAULT_ACCOUNTS_ADDRESSES[1],
-                nonce: numberToRpcQuantity(nonce),
-              },
-            ]);
-          };
-
           await this.provider.send("evm_setAutomineEnabled", [false]);
 
-          await sendDummyTransaction(0);
-          await sendDummyTransaction(1);
+          await sendDummyTransaction(this.provider, 0);
+          await sendDummyTransaction(this.provider, 1);
 
-          const tx1 = await sendDummyTransaction(4);
-          const tx2 = await sendDummyTransaction(9);
+          const tx1 = await sendDummyTransaction(this.provider, 4);
+          const tx2 = await sendDummyTransaction(this.provider, 9);
 
           const pendingTransactionsBefore = await this.provider.send(
             "eth_pendingTransactions"
@@ -3394,27 +3375,17 @@ describe("Eth module", function () {
               });
 
               it("Should eventually mine the sent transaction", async function () {
-                const sendDummyTransaction = async (nonce: number) => {
-                  return this.provider.send("eth_sendTransaction", [
-                    {
-                      from: DEFAULT_ACCOUNTS_ADDRESSES[0],
-                      to: DEFAULT_ACCOUNTS_ADDRESSES[1],
-                      nonce: numberToRpcQuantity(nonce),
-                    },
-                  ]);
-                };
-
                 await this.provider.send("evm_setAutomineEnabled", [false]);
                 const blockNumberBefore = quantityToNumber(
                   await this.provider.send("eth_blockNumber")
                 );
 
-                await sendDummyTransaction(0);
-                await sendDummyTransaction(1);
-                await sendDummyTransaction(2);
-                await sendDummyTransaction(3);
+                await sendDummyTransaction(this.provider, 0);
+                await sendDummyTransaction(this.provider, 1);
+                await sendDummyTransaction(this.provider, 2);
+                await sendDummyTransaction(this.provider, 3);
                 await this.provider.send("evm_setAutomineEnabled", [true]);
-                const txHash = await sendDummyTransaction(4);
+                const txHash = await sendDummyTransaction(this.provider, 4);
 
                 const blockAfter = await this.provider.send(
                   "eth_getBlockByNumber",
