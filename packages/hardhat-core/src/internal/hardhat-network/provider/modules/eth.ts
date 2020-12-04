@@ -78,6 +78,7 @@ import {
   RpcTransactionOutput,
 } from "../output";
 import { Block } from "../types/Block";
+import { asLoggedError } from "../types/LoggedError";
 
 import { ModulesLogger } from "./logger";
 
@@ -1403,6 +1404,10 @@ export class EthModule {
 
     const sentTxError = sentTxTrace.error;
     if (sentTxError !== undefined && this._throwOnTransactionFailures) {
+      if (this._logger.enabled) {
+        throw asLoggedError(sentTxError);
+      }
+
       throw sentTxError;
     }
   }

@@ -40,6 +40,7 @@ import {
   NodeConfig,
   TracingConfig,
 } from "./node-types";
+import { LoggedError } from "./types/LoggedError";
 
 const log = debug("hardhat:core:hardhat-network:provider");
 
@@ -154,6 +155,11 @@ export class HardhatNetworkProvider extends EventEmitter
       const loggedSomething = this._logModuleMessages();
       if (loggedSomething) {
         this._log("");
+      }
+
+      if (err instanceof LoggedError) {
+        this._log("");
+        throw err.wrappedError;
       }
 
       if (err instanceof SolidityError) {
