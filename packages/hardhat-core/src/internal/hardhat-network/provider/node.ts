@@ -605,7 +605,6 @@ export class HardhatNode extends EventEmitter {
   public async takeSnapshot(): Promise<number> {
     const id = this._nextSnapshotId;
 
-    // We copy all the maps here, as they may be modified
     const snapshot: Snapshot = {
       id,
       date: new Date(),
@@ -840,25 +839,26 @@ export class HardhatNode extends EventEmitter {
   }
 
   private async _mineTransaction(tx: Transaction): Promise<MineBlockResult> {
-    await this._txPool.addTransaction(tx);
-    await this._notifyPendingTransaction(tx);
-    return this.mineBlock(undefined, bufferToHex(tx.hash()));
+    const txHash = await this._addPendingTransaction(tx);
+    return this.mineBlock(undefined, txHash);
   }
 
   private async _mineTransactionAndPending(
     tx: Transaction
   ): Promise<MineBlockResult[]> {
-    const txHash = bufferToHex(tx.hash());
     const snapshotId = await this.takeSnapshot();
-    await this._txPool.addTransaction(tx);
-    await this._notifyPendingTransaction(tx);
+
+    let result;
     try {
-      return await this._mineBlocksUntilTransactionIsIncluded(txHash);
+      const txHash = await this._addPendingTransaction(tx);
+      result = await this._mineBlocksUntilTransactionIsIncluded(txHash);
     } catch (err) {
       await this.revertToSnapshot(snapshotId);
       throw err;
     }
-    // TODO-Ethworks optimise so that snapshot is removed
+
+    this._removeSnapshot(snapshotId);
+    return result;
   }
 
   private async _mineBlocksUntilTransactionIsIncluded(
@@ -868,7 +868,9 @@ export class HardhatNode extends EventEmitter {
     let txReceipt;
     do {
       if (!this._txPool.hasPendingTransactions()) {
-        throw new Error("this should never happen"); // TODO-Ethworks use other error
+        throw new TransactionExecutionError(
+          "Failed to mine transaction for unknown reason, this should never happen"
+        );
       }
       results.push(await this.mineBlock(undefined, txHash));
       txReceipt = await this.getTransactionReceipt(txHash);
@@ -1044,6 +1046,14 @@ export class HardhatNode extends EventEmitter {
     }
 
     return undefined;
+  }
+
+  private _removeSnapshot(id: number) {
+    const snapshotIndex = this._getSnapshotIndex(id);
+    if (snapshotIndex === undefined) {
+      return;
+    }
+    this._snapshots.splice(snapshotIndex);
   }
 
   private _initLocalAccounts(genesisAccounts: GenesisAccount[]) {
