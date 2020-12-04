@@ -21,7 +21,7 @@ export class ModulesLogger {
     }
 
     if (this._indentEnabled) {
-      message = " ".repeat(this._indent) + message;
+      message = this._indentAllLines(message);
     }
 
     this._logs.push(message);
@@ -37,7 +37,7 @@ export class ModulesLogger {
     }
 
     if (this._indentEnabled) {
-      title = " ".repeat(this._indent) + title;
+      title = this._indentSingleLine(title);
     }
 
     // We always use the max title length we've seen. Otherwise the value move
@@ -71,5 +71,16 @@ export class ModulesLogger {
 
       return `${title.padEnd(this._titleLength + 1)} ${l[1]}`;
     });
+  }
+
+  private _indentSingleLine(message: string): string {
+    return " ".repeat(this._indent) + message;
+  }
+
+  private _indentAllLines(message: string): string {
+    return message
+      .split("\n")
+      .map((line) => this._indentSingleLine(line))
+      .join("\n");
   }
 }
